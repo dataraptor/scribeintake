@@ -91,6 +91,36 @@ def add_message(
     return int(cur.lastrowid)
 
 
+def get_messages(
+    conn: sqlite3.Connection,
+    session_id: str,
+    before_id: int | None = None,
+) -> list[sqlite3.Row]:
+    """Return a session's messages in order; ``before_id`` excludes ids >= it.
+
+    Used to rebuild conversation history for the agent each turn (stateless-per-turn).
+    """
+    if before_id is None:
+        return conn.execute(
+            "SELECT id, role, content, model FROM messages WHERE session_id = ? ORDER BY id ASC",
+            (session_id,),
+        ).fetchall()
+    return conn.execute(
+        "SELECT id, role, content, model FROM messages "
+        "WHERE session_id = ? AND id < ? ORDER BY id ASC",
+        (session_id, before_id),
+    ).fetchall()
+
+
+def count_user_messages(conn: sqlite3.Connection, session_id: str) -> int:
+    """Count patient turns so far (the turn number after persisting the current message)."""
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM messages WHERE session_id = ? AND role = 'user'",
+        (session_id,),
+    ).fetchone()
+    return int(row["n"])
+
+
 # ------------------------------------------------------------------ intake state
 def load_intake_state(conn: sqlite3.Connection, session_id: str) -> IntakeState:
     """Reconstruct :class:`IntakeState` from SQLite (latest-wins per slot)."""

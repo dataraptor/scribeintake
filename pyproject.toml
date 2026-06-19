@@ -10,7 +10,7 @@ testpaths = ["core/tests", "api/tests", "eval/tests"]
 pythonpath = ["."]
 addopts = "--import-mode=importlib"
 markers = [
-    "live: tests that call the Anthropic API or load ML models (needs ANTHROPIC_API_KEY)",
+    "live: tests that call a live LLM API or load ML models (needs LLM credentials, e.g. AZURE_OPENAI_API_KEY / ANTHROPIC_API_KEY)",
 ]
 
 [tool.ruff]

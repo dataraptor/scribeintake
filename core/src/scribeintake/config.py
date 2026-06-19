@@ -12,9 +12,23 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # --- Pinned model IDs (spec section 19; verified against the claude-api skill 2026-06-20) ---
+# These are the spec's *intended* Claude pins, kept for documentation and forward
+# compatibility. The Split-01/03 environment ships an **Azure OpenAI GPT-5.5** key
+# instead of an Anthropic key (see the PROGRESS log), so the live agent loop runs on
+# ``ACTIVE_INTAKE_MODEL`` below. The deviation is conceptually consistent with the
+# spec's "no sampling knobs" API-conformance rule: GPT-5.5 is itself a reasoning model
+# that rejects ``temperature``/``top_p``/``seed`` (verified 2026-06-20).
 MODEL_INTAKE = "claude-sonnet-4-6"
 MODEL_SUMMARY = "claude-opus-4-8"
 MODEL_JUDGE = "claude-opus-4-8"
+
+# Active provider model for the wired agent loop (Split 03). Overridable via env
+# CHAT_LLM_MODEL; defaults to the deployment shipped in ``.env``.
+DEFAULT_CHAT_MODEL = "gpt-5.5"
+
+# Agent reasoning-effort routes (maps to OpenAI ``reasoning_effort`` / the spec's
+# ``output_config.effort``). Routine intake turns use ``medium``.
+EFFORT_INTAKE = "medium"
 
 # --- Loop / limits ---
 MAX_AGENT_STEPS = 4  # tool calls per turn
@@ -51,6 +65,19 @@ class Settings(BaseSettings):
     # Secret — env ANTHROPIC_API_KEY only, never hard-coded. Optional so imports
     # and the deterministic tier work without it.
     anthropic_api_key: str | None = None
+
+    # Azure OpenAI (GPT-5.5) — the provider actually wired in Split 03. All optional
+    # so importing :data:`settings` and the keyless deterministic tier never need them;
+    # they are required only when the *live* agent loop is constructed.
+    azure_openai_endpoint: str | None = None
+    azure_openai_api_key: str | None = None
+    openai_api_version: str = "2025-01-01-preview"
+    chat_llm_model: str | None = None  # e.g. "gpt-5.5"
+
+    @property
+    def ACTIVE_INTAKE_MODEL(self) -> str:
+        """The model id the live agent loop calls (env ``CHAT_LLM_MODEL`` or default)."""
+        return self.chat_llm_model or DEFAULT_CHAT_MODEL
 
     # Overridable via env DATA_DIR; defaults to <repo>/data (gitignored).
     data_dir: Path = _REPO_ROOT / "data"

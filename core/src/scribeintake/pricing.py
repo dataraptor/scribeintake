@@ -20,6 +20,12 @@ PRICES: dict[str, tuple[float, float]] = {
     "claude-opus-4-8": (5.0, 25.0),
     "claude-sonnet-4-6": (3.0, 15.0),
     "claude-haiku-4-5": (1.0, 5.0),
+    # Azure OpenAI GPT-5.5 — the provider wired in Split 03. These rates are an
+    # ESTIMATE (not list-price-pinned like the Claude rows above); they exist so the
+    # cost trace is non-zero and relatively meaningful, not for billing accuracy.
+    # OpenAI ``usage`` maps prompt_tokens->input, completion_tokens->output, and
+    # prompt_tokens_details.cached_tokens->cache_read (no separate cache-write bucket).
+    "gpt-5.5": (1.25, 10.0),
 }
 
 CACHE_WRITE_MULTIPLIER = 1.25  # 5-min ephemeral cache write
