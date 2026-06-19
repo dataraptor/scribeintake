@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
+
+from pydantic import BaseModel
 
 # stop-reason vocabulary (provider-neutral, modelled on Anthropic's ``stop_reason``)
 STOP_END_TURN = "end_turn"
@@ -73,6 +75,45 @@ class LLMClient(Protocol):
         effort: str = "medium",
     ) -> LLMResponse:
         """Run one model call. ``messages``/``tools`` are OpenAI chat-completions shapes."""
+        ...
+
+
+# ------------------------------------------------------- structured output (terminal calls)
+M = TypeVar("M", bound=BaseModel)
+
+
+@dataclass
+class StructuredResponse:
+    """Result of one **native structured-output** call (``build_summary``/``suggest_triage``).
+
+    ``parsed`` is a validated Pydantic instance of the requested schema, or ``None`` on a
+    refusal (check ``refused`` before reading ``parsed``). Schema validity is guaranteed at the
+    API layer (the model is forced to emit JSON matching the schema), so ``parsed`` never needs
+    a generate-then-validate-retry loop.
+    """
+
+    parsed: BaseModel | None
+    refused: bool
+    stop_reason: str
+    usage: LLMUsage
+    model: str
+
+
+class StructuredClient(Protocol):
+    """Seam for the orchestrator-invoked terminal calls. ``model`` is recorded in traces."""
+
+    model: str
+
+    def parse(
+        self,
+        *,
+        system: str,
+        messages: list[dict],
+        schema: type[M],
+        effort: str = "high",
+        max_tokens: int = 2048,
+    ) -> StructuredResponse:
+        """Run one structured-output call returning a validated instance of ``schema``."""
         ...
 
 
@@ -189,6 +230,49 @@ class AzureOpenAIClient:
             raw_message=_assistant_message(msg.content or "", tool_calls),
         )
 
+    def parse(
+        self,
+        *,
+        system: str,
+        messages: list[dict],
+        schema: type[M],
+        effort: str = "high",
+        max_tokens: int = 2048,
+    ) -> StructuredResponse:
+        """Native structured output via ``beta.chat.completions.parse`` (no tools).
+
+        The SDK compiles ``schema`` into a strict ``json_schema`` response format and validates
+        the model's JSON into the Pydantic instance, guaranteeing schema validity at the API
+        layer. Unlike the tool-using loop, this call has **no tools**, so ``reasoning_effort``
+        is accepted here (verified 2026-06-20) — restoring per-route effort for the terminal
+        summary/triage calls. Deliberately NO temperature/top_p/seed (rejected, 400).
+        """
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "messages": [{"role": "system", "content": system}, *messages],
+            "response_format": schema,
+            "max_completion_tokens": max_tokens,
+        }
+        if effort:
+            kwargs["reasoning_effort"] = effort
+
+        resp = self._client.beta.chat.completions.parse(**kwargs)
+        choice = resp.choices[0]
+        msg = choice.message
+
+        refusal = getattr(msg, "refusal", None)
+        stop = _FINISH_MAP.get(choice.finish_reason, STOP_END_TURN)
+        if refusal:
+            stop = STOP_REFUSAL
+        parsed = None if refusal else msg.parsed
+        return StructuredResponse(
+            parsed=parsed,
+            refused=bool(refusal),
+            stop_reason=stop,
+            usage=_usage_from_openai(resp.usage),
+            model=self.model,
+        )
+
 
 def _usage_from_openai(usage: Any) -> LLMUsage:
     """Map an OpenAI ``CompletionUsage`` (or dict) to the neutral :class:`LLMUsage`."""
@@ -230,3 +314,14 @@ def build_azure_client(settings: Any) -> AzureOpenAIClient:
         api_version=settings.openai_api_version,
         model=settings.ACTIVE_INTAKE_MODEL,
     )
+
+
+def build_summary_client(settings: Any) -> AzureOpenAIClient:
+    """Construct the live structured-output client for the terminal summary/triage calls.
+
+    The spec pins Opus 4.8 for these; this environment ships an Azure GPT-5.5 key, so the same
+    deployment serves both the loop and the terminal calls (it supports
+    ``beta.chat.completions.parse``). Kept as a separate factory so a dedicated summary
+    deployment can be swapped in later without touching the orchestrator.
+    """
+    return build_azure_client(settings)

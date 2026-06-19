@@ -12,11 +12,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from ..intake import compute_branch_hints, compute_open_slots
+from ..intake import apply_updates, compute_branch_hints, compute_open_slots
 from ..models import (
     RecordIntakeInput,
     RecordIntakeOutput,
-    SlotValue,
 )
 from .base import ToolContext, ToolSpec
 
@@ -31,12 +30,7 @@ def execute(arguments: dict, ctx: ToolContext) -> dict:
     """Apply slot updates to ``ctx.state`` (latest-wins) and recompute open slots."""
     payload = RecordIntakeInput.model_validate(arguments)
     now = datetime.now(UTC).isoformat()
-    for upd in payload.updates:
-        ctx.state.slots[upd.slot] = SlotValue(
-            value=upd.value,
-            confidence=upd.confidence,
-            updated_at=now,
-        )
+    apply_updates(ctx.state, payload.updates, source_msg_id=ctx.msg_id, now=now)
     ctx.open_slots = compute_open_slots(ctx.state.slots)
     ctx.branch_hints = compute_branch_hints(ctx.state.slots)
     return RecordIntakeOutput(

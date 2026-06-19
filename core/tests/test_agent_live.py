@@ -45,7 +45,7 @@ def test_live_benign_intake_turn(conn):
 
     # A real assistant question came back and the conversation continues.
     assert turn.assistant_text.strip()
-    assert turn.status in {"active", "ready_to_summarize"}
+    assert turn.status in {"active", "completed"}
     assert turn.level.value in {"CLEAR", "URGENT"}  # benign opener, not an emergency
     assert turn.model == settings.ACTIVE_INTAKE_MODEL
 

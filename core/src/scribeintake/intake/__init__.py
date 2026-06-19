@@ -1,18 +1,42 @@
-"""Intake engine (spec section 9).
+"""Intake engine (spec §9).
 
-Split 03 ships only a **minimal** open-slot computation — a fixed required-slot list with
-simple chief-complaint branch hints — enough for the orchestrator loop to make progress and
-for the deterministic completion check to fire. Split 04 replaces this with the real slot
-state machine + branches without touching the orchestrator (the seam is
-:func:`compute_open_slots` / :func:`compute_branch_hints`).
+The real slot state machine (Split 04): a declarative slot model (:mod:`slots`), a
+chief-complaint branch map (:mod:`branches`), and the pure open-slot / completion / latest-wins
+logic (:mod:`state_machine`). The orchestrator and ``record_intake`` depend only on the small
+seam re-exported here (:func:`compute_open_slots` / :func:`compute_branch_hints` /
+:func:`is_complete` / :func:`apply_updates`).
 """
 
 from __future__ import annotations
 
 from .slots import (
+    ALL_SLOTS,
+    OPTIONAL_SLOTS,
     REQUIRED_SLOTS,
-    compute_branch_hints,
-    compute_open_slots,
+    SLOT_TO_SOAP,
+    is_filled,
+    low_confidence_slots,
+)
+from .state_machine import (
+    apply_updates,
+    is_complete,
+)
+from .state_machine import (
+    branch_hints as compute_branch_hints,
+)
+from .state_machine import (
+    open_slots as compute_open_slots,
 )
 
-__all__ = ["REQUIRED_SLOTS", "compute_open_slots", "compute_branch_hints"]
+__all__ = [
+    "REQUIRED_SLOTS",
+    "OPTIONAL_SLOTS",
+    "ALL_SLOTS",
+    "SLOT_TO_SOAP",
+    "is_filled",
+    "low_confidence_slots",
+    "compute_open_slots",
+    "compute_branch_hints",
+    "is_complete",
+    "apply_updates",
+]

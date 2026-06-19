@@ -8,6 +8,8 @@ refusal, a truncation).
 
 from __future__ import annotations
 
+from pydantic import BaseModel
+
 from scribeintake.llm import (
     STOP_END_TURN,
     STOP_MAX_TOKENS,
@@ -15,6 +17,7 @@ from scribeintake.llm import (
     STOP_TOOL_USE,
     LLMResponse,
     LLMUsage,
+    StructuredResponse,
     ToolCall,
 )
 
@@ -110,3 +113,47 @@ def max_tokens_response(*, model: str = FAKE_MODEL) -> LLMResponse:
         usage=LLMUsage(input_tokens=80, output_tokens=512),
         model=model,
     )
+
+
+class FakeStructuredClient:
+    """Scripted :class:`~scribeintake.llm.StructuredClient` for the terminal calls (no network).
+
+    ``by_schema`` maps a Pydantic schema's class name (``"SOAP"``, ``"TriageSuggestion"``) to the
+    instance ``parse`` should return for that schema. ``refuse`` forces a refusal; ``stop_reasons``
+    scripts per-call ``stop_reason``s (e.g. ``["max_tokens", "end_turn"]`` to exercise the
+    one-shot backstop). Records every call for assertions.
+    """
+
+    def __init__(
+        self,
+        by_schema: dict[str, BaseModel],
+        *,
+        model: str = FAKE_MODEL,
+        usage: LLMUsage | None = None,
+        refuse: bool = False,
+        stop_reasons: list[str] | None = None,
+    ) -> None:
+        self.by_schema = by_schema
+        self.model = model
+        self._usage = usage or LLMUsage(input_tokens=300, output_tokens=400)
+        self._refuse = refuse
+        self._stop_reasons = list(stop_reasons or [])
+        self.calls: list[dict] = []
+
+    def parse(
+        self, *, system, messages, schema, effort="high", max_tokens=2048
+    ) -> StructuredResponse:
+        self.calls.append(
+            {"system": system, "messages": messages, "schema": schema.__name__,
+             "effort": effort, "max_tokens": max_tokens}
+        )
+        stop = self._stop_reasons.pop(0) if self._stop_reasons else STOP_END_TURN
+        if self._refuse:
+            return StructuredResponse(
+                parsed=None, refused=True, stop_reason=STOP_REFUSAL,
+                usage=self._usage, model=self.model,
+            )
+        parsed = self.by_schema[schema.__name__]
+        return StructuredResponse(
+            parsed=parsed, refused=False, stop_reason=stop, usage=self._usage, model=self.model,
+        )

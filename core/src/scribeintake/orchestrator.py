@@ -15,10 +15,12 @@ from __future__ import annotations
 import json
 import sqlite3
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from . import db, pricing
-from .config import EFFORT_INTAKE, MAX_INTAKE_TURNS, RULES_VERSION
-from .intake import compute_branch_hints, compute_open_slots
+from .config import EFFORT_INTAKE, PROMPT_VERSION, RULES_VERSION, settings
+from .intake import compute_branch_hints, compute_open_slots, is_complete
+from .llm import StructuredClient
 from .models import (
     EscalationLevel,
     EscalationSource,
@@ -30,10 +32,17 @@ from .models import (
 from .safety import emergency_template, run_gate, urgent_template
 from .safety.rules import raise_floor
 from .tools import ToolContext
+from .tools.build_summary import SummaryResult, build_summary
+from .tools.suggest_triage import TriageResult, suggest_triage
 
 _RANK = {EscalationLevel.CLEAR: 0, EscalationLevel.URGENT: 1, EscalationLevel.EMERGENCY: 2}
 
 _FALLBACK_QUESTION = "Could you tell me a bit more about what's been bothering you?"
+
+_COMPLETION_MESSAGE = (
+    "Thanks — that's everything I need for now. I've prepared a summary of what you told me "
+    "for your clinician to review. Remember, this is not a diagnosis."
+)
 
 
 @dataclass
@@ -61,6 +70,9 @@ class AssistantTurn:
     traces: list[ToolCallTrace] = field(default_factory=list)
     model: str | None = None
     failed_safe: bool = False
+    # Populated only on the completion turn (the finalized SOAP + clamped predicted band).
+    soap: dict | None = None
+    triage_band: TriageBand | None = None
 
     def as_dict(self) -> dict:
         return {
@@ -79,6 +91,8 @@ class AssistantTurn:
             "tools_used": self.tools_used,
             "model": self.model,
             "failed_safe": self.failed_safe,
+            "soap": self.soap,
+            "triage_band": self.triage_band.value if self.triage_band else None,
         }
 
 
@@ -88,13 +102,18 @@ def run_turn(
     *,
     conn: sqlite3.Connection,
     agent: object | None = None,
+    summary_client: StructuredClient | None = None,
+    generated_at: str | None = None,
     effort: str = EFFORT_INTAKE,
 ) -> AssistantTurn:
     """Run one patient turn end-to-end (steps 1–7, §6).
 
     ``agent`` is an :class:`~scribeintake.agent.AgentLoop` (or a compatible double for tests);
     if ``None`` the live agent is built lazily — but only when the turn actually reaches the
-    model step, so the EMERGENCY short-circuit needs no credentials.
+    model step, so the EMERGENCY short-circuit needs no credentials. ``summary_client`` is the
+    :class:`~scribeintake.llm.StructuredClient` for the terminal summary/triage calls (lazily
+    built only when a turn actually completes). ``generated_at`` is the ISO timestamp stamped
+    into the SOAP — passed in so eval/cached paths stay reproducible (§3.4).
     """
     # --- load state (stateless-per-turn) -----------------------------------------
     state = db.load_intake_state(conn, session_id)
@@ -140,6 +159,7 @@ def run_turn(
         state=state,
         conn=conn,
         rules_version=RULES_VERSION,
+        msg_id=str(msg_id),
     )
     ctx.open_slots = compute_open_slots(state.slots)
     ctx.branch_hints = compute_branch_hints(state.slots)
@@ -197,15 +217,32 @@ def run_turn(
 
     # --- step 6: completion check (orchestrator-owned, deterministic) -------------
     open_slots = compute_open_slots(state.slots)
-    if not open_slots or turn >= MAX_INTAKE_TURNS:
-        state.status = "ready_to_summarize"
+    soap_dict: dict | None = None
+    triage_band: TriageBand | None = None
+
+    if is_complete(state.slots, turn):
+        # --- finalization: build_summary -> suggest_triage -> persist (§3.6) ------
+        soap_dict, triage_band, fin_traces = _finalize(
+            conn,
+            state,
+            turn,
+            summary_client=summary_client,
+            generated_at=generated_at,
+        )
+        traces.extend(fin_traces)
+        state.status = "completed"
+        assistant_text = _COMPLETION_MESSAGE
     else:
         state.status = "active"
+        assistant_text = result.assistant_text or _FALLBACK_QUESTION
 
     # --- step 7: persist assistant message + state -------------------------------
-    assistant_text = result.assistant_text or _FALLBACK_QUESTION
     db.add_message(conn, session_id, "assistant", assistant_text, model=model_used)
     db.save_intake_state(conn, state)
+    if triage_band is not None:
+        # completed: persist the summary row + final band (after state, which sets status).
+        db.save_summary(conn, session_id, json.dumps(soap_dict), PROMPT_VERSION)
+        db.finalize_session(conn, session_id, triage_band.value)
 
     return AssistantTurn(
         session_id=session_id,
@@ -224,10 +261,89 @@ def run_turn(
         traces=traces,
         model=model_used,
         failed_safe=gate.failed_safe,
+        soap=soap_dict,
+        triage_band=triage_band,
     )
 
 
 # ----------------------------------------------------------------------- helpers
+def _finalize(
+    conn: sqlite3.Connection,
+    state: IntakeState,
+    turn: int,
+    *,
+    summary_client: StructuredClient | None,
+    generated_at: str | None,
+) -> tuple[dict, TriageBand, list[ToolCallTrace]]:
+    """Run the two terminal Opus→GPT-5.5 calls and return ``(soap_dict, band, traces)``.
+
+    ``build_summary`` (schema-valid SOAP) then ``suggest_triage`` (band clamped ≥ floor). The
+    clamped band is written into the SOAP's ``triage`` block so the persisted summary and the
+    session band agree. The summary client is built lazily here — only a turn that actually
+    completes needs credentials.
+    """
+    if summary_client is None:
+        from .llm import build_summary_client
+
+        summary_client = build_summary_client(settings)
+    stamp = generated_at or datetime.now(UTC).isoformat()
+
+    summary = build_summary(state, client=summary_client, generated_at=stamp)
+    triage = suggest_triage(
+        state, summary.soap, floor=state.triage_floor, client=summary_client
+    )
+    summary.soap.triage = triage.triage  # clamped band into the SOAP
+
+    traces = _persist_finalize_traces(conn, state.session_id, turn, summary, triage)
+    return summary.soap.model_dump(), triage.triage.band, traces
+
+
+def _persist_finalize_traces(
+    conn: sqlite3.Connection,
+    session_id: str,
+    turn: int,
+    summary: SummaryResult,
+    triage: TriageResult,
+) -> list[ToolCallTrace]:
+    """Write one ``tool_calls`` row per terminal structured-output call (with cost)."""
+    traces: list[ToolCallTrace] = []
+    for tool, model, usage, result_json in (
+        ("build_summary", summary.model, summary.usage, {"refused": summary.refused}),
+        (
+            "suggest_triage",
+            triage.model,
+            triage.usage,
+            {"model_band": triage.model_band.value, "band": triage.triage.band.value},
+        ),
+    ):
+        cost = (
+            pricing.cost_usd(
+                model,
+                usage.input_tokens,
+                usage.output_tokens,
+                usage.cache_creation_tokens,
+                usage.cache_read_tokens,
+            )
+            if model in pricing.PRICES
+            else 0.0
+        )
+        tr = ToolCallTrace(
+            session_id=session_id,
+            turn=turn,
+            tool=tool,
+            model=model,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            cache_read_tokens=usage.cache_read_tokens,
+            cache_creation_tokens=usage.cache_creation_tokens,
+            cost_usd=cost,
+            result_json=json.dumps(result_json),
+        )
+        db.log_tool_call(conn, tr)
+        traces.append(tr)
+    return traces
+
+
 def _halt(
     conn: sqlite3.Connection,
     state: IntakeState,

@@ -28,6 +28,7 @@ class ToolContext:
     state: IntakeState
     conn: object | None = None  # sqlite3.Connection | None (kept loose to avoid import)
     rules_version: str = RULES_VERSION
+    msg_id: str | None = None  # the current patient message id (slot-write provenance)
     open_slots: list[str] = field(default_factory=list)
     branch_hints: list[str] = field(default_factory=list)
     agent_escalation: EscalationLevel | None = None

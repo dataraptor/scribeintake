@@ -7,13 +7,20 @@ trace/cost accounting, and statelessness across turns.
 
 from __future__ import annotations
 
-from fakes import FakeLLMClient, refusal_response, text_response, tool_response
+from fakes import (
+    FakeLLMClient,
+    FakeStructuredClient,
+    refusal_response,
+    text_response,
+    tool_response,
+)
 
 from scribeintake import db
 from scribeintake.agent import REFUSAL_REPLY, AgentLoop
-from scribeintake.models import EscalationLevel, EscalationSource, TriageBand
+from scribeintake.models import SOAP, EscalationLevel, EscalationSource, Subjective, TriageBand
 from scribeintake.orchestrator import run_turn
 from scribeintake.tools import default_registry
+from scribeintake.tools.suggest_triage import TriageSuggestion
 
 CLEAR_MSG = "I've had a mild sore throat for a couple of days."
 URGENT_MSG = "I have severe abdominal pain that is really bad."
@@ -22,6 +29,16 @@ URGENT_MSG = "I have severe abdominal pain that is really bad."
 def agent_with(*responses) -> AgentLoop:
     """A real AgentLoop wired to a scripted fake client (exercises real tool dispatch)."""
     return AgentLoop(FakeLLMClient(list(responses)), default_registry())
+
+
+def _finalize_client(band: TriageBand = TriageBand.self_care) -> FakeStructuredClient:
+    """A structured client that returns a valid SOAP + an advisory triage band."""
+    return FakeStructuredClient(
+        {
+            "SOAP": SOAP(subjective=Subjective(chief_complaint="sore throat")),
+            "TriageSuggestion": TriageSuggestion(band=band, rationale="benign, self-limited"),
+        }
+    )
 
 
 def _record(updates: list[tuple[str, str]]):
@@ -80,15 +97,16 @@ def test_completion_check_is_orchestrator_owned_not_the_agent(conn, session):
         CLEAR_MSG,
         conn=conn,
         agent=agent_with(
-            _record([("chief_complaint", "sore throat"), ("onset", "2 days ago")]),
+            _record([("chief_complaint", "sore throat"), ("hpi.onset", "2 days ago")]),
             text_response("How long has it lasted?"),
         ),
     )
     assert t1.status == "active"
     assert db.load_intake_state(conn, session).slots["chief_complaint"].value == "sore throat"
 
-    # Turn 2 fills the remaining required slots; the *engine* flips ready_to_summarize,
-    # even though the agent's text never claims to be done.
+    # Turn 2 fills the remaining required slots; the *engine* completes the intake (and
+    # finalizes via the injected summary client), even though the agent's text never claims
+    # to be done. A finalization client is required only because the turn actually completes.
     t2 = run_turn(
         session,
         "Here are the rest of the details.",
@@ -96,18 +114,22 @@ def test_completion_check_is_orchestrator_owned_not_the_agent(conn, session):
         agent=agent_with(
             _record(
                 [
-                    ("duration", "2 days"),
-                    ("severity", "mild"),
-                    ("associated_symptoms", "none"),
+                    ("hpi.severity", "mild"),
                     ("medications", "none"),
                     ("allergies", "none"),
                 ]
             ),
             text_response("Thanks — I'll prepare a summary for your clinician."),
         ),
+        summary_client=_finalize_client(),
     )
     assert t2.open_slots == []
-    assert t2.status == "ready_to_summarize"
+    assert t2.status == "completed"
+    # A summary row was persisted; the agent never decided this — the engine did.
+    n = conn.execute(
+        "SELECT COUNT(*) AS n FROM summaries WHERE session_id = ?", (session,)
+    ).fetchone()["n"]
+    assert n == 1
 
 
 # ------------------------------------------ agent independent escalation net (§8)
@@ -195,10 +217,10 @@ def test_orchestrator_is_stateless_across_turns(conn, session):
         session,
         "It started yesterday.",
         conn=conn,
-        agent=agent_with(_record([("onset", "yesterday")]), text_response("q2")),
+        agent=agent_with(_record([("hpi.onset", "yesterday")]), text_response("q2")),
     )
     state = db.load_intake_state(conn, session)
     assert state.slots["chief_complaint"].value == "sore throat"
-    assert state.slots["onset"].value == "yesterday"
+    assert state.slots["hpi.onset"].value == "yesterday"
     # Two patient turns recorded.
     assert db.count_user_messages(conn, session) == 2

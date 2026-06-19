@@ -27,12 +27,17 @@ MODEL_JUDGE = "claude-opus-4-8"
 DEFAULT_CHAT_MODEL = "gpt-5.5"
 
 # Agent reasoning-effort routes (maps to OpenAI ``reasoning_effort`` / the spec's
-# ``output_config.effort``). Routine intake turns use ``medium``.
+# ``output_config.effort``). Routine intake turns use ``medium``; the terminal SOAP summary is
+# quality-critical clinical reasoning (``high``); triage refinement is ``medium``.
 EFFORT_INTAKE = "medium"
+EFFORT_SUMMARY = "high"
+EFFORT_TRIAGE = "medium"
 
 # --- Loop / limits ---
 MAX_AGENT_STEPS = 4  # tool calls per turn
 MAX_INTAKE_TURNS = 20
+MAX_SUMMARY_TOKENS = 4096  # terminal SOAP call (bumped once on max_tokens, §3.4)
+MAX_TRIAGE_TOKENS = 2048  # terminal triage call
 
 # --- Prompt-cache floors (tokens, spec section 16) ---
 CACHE_FLOOR_OPUS = 4096

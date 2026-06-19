@@ -130,6 +130,14 @@ class SafetyVerdict(BaseModel):
 
 # ---------------------------------------------------- SOAP (structured-output-safe)
 class HPI(BaseModel):
+    """OLDCARTS HPI (spec §12) plus ``radiation``.
+
+    ``radiation`` extends strict OLDCARTS so the chest-pain **branch** slot
+    (``hpi.radiation`` — "spreads to my left arm") has a real home and binds 1:1 to the
+    mockup's summary ``FIELDS`` (Split 04 §3.1, option *b* — no data loss, clean Split 10/11
+    binding). It stays a plain ``str`` so the schema remains structured-output-safe.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     onset: str = ""
@@ -140,6 +148,7 @@ class HPI(BaseModel):
     relieving: str = ""
     timing: str = ""
     severity: str = ""
+    radiation: str = ""
 
 
 class PatientReportedVitals(BaseModel):

@@ -186,6 +186,41 @@ def save_intake_state(conn: sqlite3.Connection, state: IntakeState) -> None:
     conn.commit()
 
 
+# ------------------------------------------------------------------- summaries
+def save_summary(
+    conn: sqlite3.Connection,
+    session_id: str,
+    soap_json: str,
+    version: str,
+    ts: str | None = None,
+) -> int:
+    """Insert one ``summaries`` row (final SOAP); returns its id."""
+    cur = conn.execute(
+        "INSERT INTO summaries (session_id, soap_json, version, ts) VALUES (?, ?, ?, ?)",
+        (session_id, soap_json, version, ts or _now_iso()),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def finalize_session(
+    conn: sqlite3.Connection,
+    session_id: str,
+    triage_band: str,
+    completed_at: str | None = None,
+) -> None:
+    """Mark a session completed: set its final ``triage_band`` and ``completed_at``.
+
+    The monotonic ``triage_floor`` and ``status`` are written by :func:`save_intake_state`;
+    this sets only the two completion-specific columns.
+    """
+    conn.execute(
+        "UPDATE sessions SET triage_band = ?, completed_at = ? WHERE id = ?",
+        (triage_band, completed_at or _now_iso(), session_id),
+    )
+    conn.commit()
+
+
 # --------------------------------------------------------------- observability
 def log_tool_call(conn: sqlite3.Connection, trace: ToolCallTrace) -> int:
     """Insert one ``tool_calls`` audit row; returns its id."""
