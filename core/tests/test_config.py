@@ -32,7 +32,7 @@ def test_data_dir_is_created_on_access():
     assert data_dir.is_dir()
     # Derived paths hang off DATA_DIR.
     assert config.settings.DB_PATH.parent == data_dir
-    assert config.settings.CHROMA_DIR.parent == data_dir
+    assert config.settings.RAG_INDEX_DIR.parent == data_dir
 
 
 def test_kb_dir_points_into_package():

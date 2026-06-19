@@ -33,6 +33,10 @@ class ToolContext:
     branch_hints: list[str] = field(default_factory=list)
     agent_escalation: EscalationLevel | None = None
     agent_escalation_rationale: str = ""
+    # Live RAG retriever for ``retrieve_guideline`` (Split 05). Injected by the orchestrator;
+    # ``None`` ⇒ the tool returns no chunks (graceful "no citation available"), so the
+    # deterministic tier needs no built index.
+    retriever: object | None = None  # rag.HybridRetriever | None
 
 
 @dataclass

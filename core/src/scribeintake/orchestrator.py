@@ -13,18 +13,20 @@ there is no in-memory session map, which is what keeps eval runs isolated and pa
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from . import db, pricing
-from .config import EFFORT_INTAKE, PROMPT_VERSION, RULES_VERSION, settings
+from .config import EFFORT_INTAKE, PROMPT_VERSION, RETRIEVE_K, RULES_VERSION, settings
 from .intake import compute_branch_hints, compute_open_slots, is_complete
 from .llm import StructuredClient
 from .models import (
     EscalationLevel,
     EscalationSource,
     IntakeState,
+    RetrievedChunk,
     SafetyVerdict,
     ToolCallTrace,
     TriageBand,
@@ -32,8 +34,10 @@ from .models import (
 from .safety import emergency_template, run_gate, urgent_template
 from .safety.rules import raise_floor
 from .tools import ToolContext
-from .tools.build_summary import SummaryResult, build_summary
+from .tools.build_summary import SummaryResult, bind_triage_citation, build_summary
 from .tools.suggest_triage import TriageResult, suggest_triage
+
+logger = logging.getLogger(__name__)
 
 _RANK = {EscalationLevel.CLEAR: 0, EscalationLevel.URGENT: 1, EscalationLevel.EMERGENCY: 2}
 
@@ -103,6 +107,7 @@ def run_turn(
     conn: sqlite3.Connection,
     agent: object | None = None,
     summary_client: StructuredClient | None = None,
+    retriever: object | None = None,
     generated_at: str | None = None,
     effort: str = EFFORT_INTAKE,
 ) -> AssistantTurn:
@@ -112,8 +117,13 @@ def run_turn(
     if ``None`` the live agent is built lazily — but only when the turn actually reaches the
     model step, so the EMERGENCY short-circuit needs no credentials. ``summary_client`` is the
     :class:`~scribeintake.llm.StructuredClient` for the terminal summary/triage calls (lazily
-    built only when a turn actually completes). ``generated_at`` is the ISO timestamp stamped
-    into the SOAP — passed in so eval/cached paths stay reproducible (§3.4).
+    built only when a turn actually completes). ``retriever`` is the RAG
+    :class:`~scribeintake.rag.HybridRetriever` used for ``retrieve_guideline`` + citation
+    binding; when ``None`` it is lazily loaded **only on the full production path** (i.e. when
+    ``agent`` is also lazily built), so the deterministic tier — which injects an ``agent`` —
+    never loads an index. A missing/unbuilt index degrades gracefully to ``uncited``.
+    ``generated_at`` is the ISO timestamp stamped into the SOAP — passed in so eval/cached paths
+    stay reproducible (§3.4).
     """
     # --- load state (stateless-per-turn) -----------------------------------------
     state = db.load_intake_state(conn, session_id)
@@ -148,10 +158,15 @@ def run_turn(
         )
 
     # --- step 4: agent (CLEAR or URGENT continue) --------------------------------
+    # The production path builds both the agent and the retriever lazily; an injected agent
+    # (the deterministic tier) suppresses the retriever auto-load so no index is required.
+    lazy_path = agent is None
     if agent is None:
         from .agent import build_default_agent
 
         agent = build_default_agent()
+    if retriever is None and lazy_path:
+        retriever = _lazy_retriever()
 
     ctx = ToolContext(
         session_id=session_id,
@@ -160,6 +175,7 @@ def run_turn(
         conn=conn,
         rules_version=RULES_VERSION,
         msg_id=str(msg_id),
+        retriever=retriever,
     )
     ctx.open_slots = compute_open_slots(state.slots)
     ctx.branch_hints = compute_branch_hints(state.slots)
@@ -227,6 +243,7 @@ def run_turn(
             state,
             turn,
             summary_client=summary_client,
+            retriever=retriever,
             generated_at=generated_at,
         )
         traces.extend(fin_traces)
@@ -273,14 +290,16 @@ def _finalize(
     turn: int,
     *,
     summary_client: StructuredClient | None,
+    retriever: object | None,
     generated_at: str | None,
 ) -> tuple[dict, TriageBand, list[ToolCallTrace]]:
     """Run the two terminal Opus→GPT-5.5 calls and return ``(soap_dict, band, traces)``.
 
-    ``build_summary`` (schema-valid SOAP) then ``suggest_triage`` (band clamped ≥ floor). The
-    clamped band is written into the SOAP's ``triage`` block so the persisted summary and the
-    session band agree. The summary client is built lazily here — only a turn that actually
-    completes needs credentials.
+    ``build_summary`` (schema-valid SOAP, with retrieved chunks bound as citations) then
+    ``suggest_triage`` (band clamped ≥ floor). The clamped band is written into the SOAP's
+    ``triage`` block — and its rationale cited — so the persisted summary and the session band
+    agree. The summary client is built lazily here — only a turn that actually completes needs
+    credentials.
     """
     if summary_client is None:
         from .llm import build_summary_client
@@ -288,14 +307,47 @@ def _finalize(
         summary_client = build_summary_client(settings)
     stamp = generated_at or datetime.now(UTC).isoformat()
 
-    summary = build_summary(state, client=summary_client, generated_at=stamp)
-    triage = suggest_triage(
-        state, summary.soap, floor=state.triage_floor, client=summary_client
-    )
+    chunks = _retrieve_for_summary(state, retriever)
+    summary = build_summary(state, client=summary_client, generated_at=stamp, chunks=chunks)
+    triage = suggest_triage(state, summary.soap, floor=state.triage_floor, client=summary_client)
     summary.soap.triage = triage.triage  # clamped band into the SOAP
+    bind_triage_citation(summary.soap.triage, chunks)  # cite the rationale (or leave empty)
 
     traces = _persist_finalize_traces(conn, state.session_id, turn, summary, triage)
     return summary.soap.model_dump(), triage.triage.band, traces
+
+
+def _summary_query(state: IntakeState) -> str:
+    """Build a retrieval query from the chief complaint + salient HPI for citation binding."""
+    parts: list[str] = []
+    for key in ("chief_complaint", "hpi.character", "hpi.radiation", "hpi.location"):
+        sv = state.slots.get(key)
+        if sv and sv.value and sv.value.strip().lower() not in ("", "none", "unknown"):
+            parts.append(sv.value.strip())
+    base = " ".join(parts) or "general symptoms"
+    return f"{base} when to seek emergency care"
+
+
+def _retrieve_for_summary(state: IntakeState, retriever: object | None) -> list[RetrievedChunk]:
+    """Best-effort retrieval for citation binding; empty (→ uncited) on any failure (§18)."""
+    if retriever is None:
+        return []
+    try:
+        return retriever.retrieve(_summary_query(state), k=RETRIEVE_K)  # type: ignore[attr-defined]
+    except Exception as exc:  # noqa: BLE001 - never fail finalization on retrieval
+        logger.warning("summary retrieval failed, proceeding uncited: %s", exc)
+        return []
+
+
+def _lazy_retriever() -> object | None:
+    """Load the process-cached live retriever; ``None`` if no index is built yet (§18)."""
+    try:
+        from .rag import get_retriever
+
+        return get_retriever()
+    except Exception as exc:  # noqa: BLE001 - unbuilt/unreadable index → degrade to uncited
+        logger.warning("RAG retriever unavailable, proceeding without citations: %s", exc)
+        return None
 
 
 def _persist_finalize_traces(

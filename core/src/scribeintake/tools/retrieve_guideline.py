@@ -1,26 +1,43 @@
-"""``retrieve_guideline`` tool — **STUB** for Split 03 (spec section 8 / 11).
+"""``retrieve_guideline`` tool (spec §8/§11) — real hybrid retrieval over the local KB.
 
-Returns an empty result this split; Split 05 swaps the body in (BM25 + embeddings + rerank
-over the local KB) without changing the signature or the callers. The return shape is fixed
-now: ``{"chunks": list[RetrievedChunk]}``. Local tool — **no model call** (cost ``$0``).
+Split 05 swaps the Split-03 stub for the production retriever: it calls the injected
+:class:`~scribeintake.rag.HybridRetriever` (BM25 ∪ dense → cross-encoder rerank → top-k) and
+returns real ``chunk_id``-bearing chunks. **Local tool — no model call, cost $0** in the trace.
+
+Retrieval is always best-effort: with no retriever wired (``ctx.retriever is None``, e.g. the
+deterministic tier or an unbuilt index) or on any retrieval error, it returns ``{"chunks": []}``
+— treated downstream as "no citation available", never a fabricated source (spec §18).
 """
 
 from __future__ import annotations
 
+import logging
+
+from ..config import RETRIEVE_K
 from ..models import RetrieveGuidelineInput
 from .base import ToolContext, ToolSpec
 
+logger = logging.getLogger(__name__)
+
 _DESCRIPTION = (
-    "Retrieve passages from curated, public-domain clinical guidelines to ground a "
-    "statement. Returns cited chunks; never invent a source. (No results yet — retrieval "
-    "is wired in a later build; treat an empty result as 'no citation available'.)"
+    "Retrieve passages from curated, public-domain clinical guidelines (MedlinePlus, CDC, NIH, "
+    "NIMH) to ground a statement. Returns cited chunks, each with a chunk_id, source and url; "
+    "never invent a source. An empty result means no citation is available."
 )
 
 
 def execute(arguments: dict, ctx: ToolContext) -> dict:
-    """Validate the query shape and return no chunks (stub)."""
-    RetrieveGuidelineInput.model_validate(arguments)  # shape-check; raises on bad args
-    return {"chunks": []}
+    """Run hybrid retrieval for ``arguments['query']``; return ``{"chunks": [...]}``."""
+    args = RetrieveGuidelineInput.model_validate(arguments)  # shape-check; raises on bad args
+    retriever = ctx.retriever
+    if retriever is None:
+        return {"chunks": []}  # no index wired → graceful "no citation available"
+    try:
+        chunks = retriever.retrieve(args.query, k=args.k or RETRIEVE_K)
+    except Exception as exc:  # noqa: BLE001 - retrieval must never crash the turn
+        logger.warning("retrieve_guideline failed, returning no chunks: %s", exc)
+        return {"chunks": []}
+    return {"chunks": [c.model_dump() for c in chunks]}
 
 
 SPEC = ToolSpec(

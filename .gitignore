@@ -151,6 +151,7 @@ activemq-data/
 # ScribeIntake: runtime data, built indexes, model caches (never commit)
 data/
 **/.chroma/
+**/.rag_index/
 **/*.bin
 
 # Environments

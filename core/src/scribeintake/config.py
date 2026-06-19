@@ -39,6 +39,17 @@ MAX_INTAKE_TURNS = 20
 MAX_SUMMARY_TOKENS = 4096  # terminal SOAP call (bumped once on max_tokens, §3.4)
 MAX_TRIAGE_TOKENS = 2048  # terminal triage call
 
+# --- RAG retrieval (Split 05, spec §11/§12) ---
+RETRIEVE_K = 5  # chunks returned to the caller after rerank
+RAG_CANDIDATES = 20  # BM25 top-N and dense top-N recall depth (union → rerank)
+# Citation binding (build_summary): an observation binds to a chunk only when their content
+# terms overlap enough — otherwise it is flagged ``uncited`` (never a fabricated source). The
+# model is shown the retrieved passages, so a grounded observation echoes the chunk's vocabulary
+# (high overlap), while a generic screening note ("none triggered") shares little and stays
+# uncited. Conservative by design: prefer a missed citation to a fabricated one.
+CITATION_MIN_OVERLAP = 0.2  # fraction of the statement's content terms found in the chunk
+CITATION_MIN_SHARED = 2  # and at least this many distinct content terms shared
+
 # --- Prompt-cache floors (tokens, spec section 16) ---
 CACHE_FLOOR_OPUS = 4096
 CACHE_FLOOR_SONNET = 2048
@@ -104,9 +115,15 @@ class Settings(BaseSettings):
         return _PACKAGE_DIR / "kb"
 
     @property
-    def CHROMA_DIR(self) -> Path:
-        """Local Chroma store path (Split 05)."""
-        return self.DATA_DIR / ".chroma"
+    def RAG_INDEX_DIR(self) -> Path:
+        """Local RAG index dir (Split 05): the persisted vector store + BM25 store.
+
+        A dependency-light JSON vector store (``vectors.json``) + ``bm25.json`` live here. (The
+        spec pinned Chroma; it is replaced by this local store — see the Split 05 session log —
+        because chromadb 0.4.24 is incompatible with the environment's NumPy 2.x. The
+        ``DenseIndex`` seam keeps a Chroma/FAISS backend a drop-in for larger corpora.)
+        """
+        return self.DATA_DIR / ".rag_index"
 
 
 settings = Settings()

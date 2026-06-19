@@ -9,9 +9,11 @@ description = "ScribeIntake core engine: deterministic safety gate, intake, RAG,
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-# Baseline deps for splits 01-03. Heavy ML deps (chromadb, sentence-transformers,
-# rank-bm25) are deferred to Split 05. Exact installed versions are recorded in the
-# Split 01 session log; bounds are pinned to the next major to stay reproducible.
+# Baseline deps. ``rank-bm25`` is tiny pure-Python and is needed by the deterministic
+# retrieval tests, so it is a base dep. The heavy RAG models (chromadb, sentence-transformers
+# → torch) are an opt-in ``rag`` extra so the per-commit gate stays light and keyless — they
+# are lazy-imported and only the live tier / ingest needs them. Installed versions are recorded
+# in the Split 05 session log; bounds are pinned to the next major for reproducibility.
 dependencies = [
     "anthropic>=0.40,<1",
     "openai>=1.40,<2",
@@ -19,12 +21,21 @@ dependencies = [
     "pydantic-settings>=2.1,<3",
     "python-dotenv>=1.0,<2",
     "pyyaml>=6.0,<7",
+    "rank-bm25>=0.2,<1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8,<10",
     "ruff>=0.6,<1",
+]
+# Local RAG models (Split 05): the dense embedder + cross-encoder reranker.
+# Install with: pip install -e "./core[rag]"  (pulls torch — only needed for ingest / live
+# semantic retrieval; the deterministic tier and the persisted vector store need neither).
+# The vector store is a dependency-light local JSON store, so chromadb is NOT required (it was
+# the spec's pin but is incompatible with this env's NumPy 2.x — see the Split 05 session log).
+rag = [
+    "sentence-transformers>=2.2,<4",
 ]
 
 [tool.setuptools]
@@ -34,7 +45,7 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-scribeintake = ["schema.sql", "prompts/*.md"]
+scribeintake = ["schema.sql", "prompts/*.md", "kb/sources.csv", "kb/docs/*.md"]
 
 [tool.pytest.ini_options]
 markers = [
