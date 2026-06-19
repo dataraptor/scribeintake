@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scribeintake"
+version = "0.1.0"
+description = "ScribeIntake core engine: deterministic safety gate, intake, RAG, and SOAP summary."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+# Baseline deps for splits 01-03. Heavy ML deps (chromadb, sentence-transformers,
+# rank-bm25) are deferred to Split 05. Exact installed versions are recorded in the
+# Split 01 session log; bounds are pinned to the next major to stay reproducible.
+dependencies = [
+    "anthropic>=0.40,<1",
+    "pydantic>=2.5,<3",
+    "pydantic-settings>=2.1,<3",
+    "python-dotenv>=1.0,<2",
+    "pyyaml>=6.0,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<10",
+    "ruff>=0.6,<1",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+scribeintake = ["schema.sql"]
+
+[tool.pytest.ini_options]
+markers = [
+    "live: tests that call the Anthropic API or load ML models (needs ANTHROPIC_API_KEY)",
+]

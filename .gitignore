@@ -148,6 +148,11 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# ScribeIntake: runtime data, built indexes, model caches (never commit)
+data/
+**/.chroma/
+**/*.bin
+
 # Environments
 .env
 .envrc
