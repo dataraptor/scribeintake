@@ -204,28 +204,33 @@ def run_flows(page, seeded_id: str) -> None:
         has_rule = any("Rule correctness" in x for x in labels)
         check("proof: deterministic group has Rule correctness", has_rule)
 
-    # FLOW 6 — DEMO_MODE offline: ?demo=1 runs the original simulation with NO backend calls.
+    # FLOW 6 — no offline simulation: the client carries no demo data, and ?demo=1 (a legacy
+    # switch) no longer suppresses the backend. Clicking an example chip must hit the real API.
     page.goto(BASE + "/?demo=1", wait_until="networkidle")
     page.wait_for_selector("textarea", timeout=15000)
-    demo_calls = {"n": 0}
+    no_demo_flag = page.evaluate(
+        "() => !window.SI_API || window.SI_API.DEMO_MODE === undefined"
+    )
+    check("no-demo: client exposes no DEMO_MODE switch", bool(no_demo_flag))
+    session_calls = {"n": 0}
     page.on(
         "request",
-        lambda req: demo_calls.__setitem__(
-            "n", demo_calls["n"] + (1 if "/session" in req.url else 0)
+        lambda req: session_calls.__setitem__(
+            "n", session_calls["n"] + (1 if "/session" in req.url else 0)
         ),
     )
-    # click the chest example chip (simulation path)
+    # click the chest example chip — there is no offline path, so it must call the real API
+    # (createSession is key-free, so the POST /session happens even without a model key).
     page.get_by_text("chest tightness", exact=False).first.click()
     try:
-        page.wait_for_selector("text=spread", timeout=8000)  # the scripted follow-up question
-        check("demo: offline simulation produced a scripted reply", True)
+        page.wait_for_function("() => window.__si_seen || true", timeout=6000)
     except Exception:  # noqa: BLE001
-        fell_back = "extract" in page.content().lower()
-        check("demo: offline simulation produced a scripted reply", fell_back)
+        pass
+    page.wait_for_timeout(2000)
     check(
-        "demo: no /session API call made in DEMO_MODE",
-        demo_calls["n"] == 0,
-        f"calls={demo_calls['n']}",
+        "no-demo: example chip hits the real /session API (no offline simulation)",
+        session_calls["n"] >= 1,
+        f"calls={session_calls['n']}",
     )
 
     # FLOW 7 — live routine streaming (needs a model key): soft check.

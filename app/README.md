@@ -1,9 +1,12 @@
 # app — ScribeIntake frontend
 
 The user-facing frontend. It **renders what the backend returns and handles interaction; it holds
-no safety or business logic of its own.** In connected mode the deterministic safety gate, the
-escalation floor, the emergency/crisis wording, and the SOAP summary all come from the API
-(`core` upstream of the LLM) — the client only displays them.
+no safety or business logic of its own, and carries no offline/demo data.** The deterministic
+safety gate, the escalation floor, the emergency/crisis wording, the SOAP summary, and the Proof
+tab's leaderboard/framing all come from the API (`core` upstream of the LLM) — the client only
+displays them. Every value on screen is fetched; there is no client-side simulation or fallback
+sample data. If the API is unreachable the client shows an honest reconnect message, never a
+fabricated reply.
 
 ## What's here
 
@@ -43,20 +46,15 @@ python -m http.server 5500 --directory app       # the static frontend
 CORS defaults to `*` (set `API_CORS_ORIGINS` to pin it). `API_BASE` is resolved from, in order:
 `window.API_BASE` → `?api=` query param → `<meta name="api-base">` → same-origin (`""`).
 
-## Offline DEMO_MODE (the standalone mockup)
+## No offline/demo data
 
-The component still runs with **no backend**, replaying its built-in scripted simulation
-(`extract`/`gate`/`SCN`/…). This is automatic when `window.SI_API` is absent (opening
-`ScribeIntake.dc.html` directly in the design tool), or forced with `?demo=1`:
+There is no offline simulation. The earlier `DEMO_MODE` (the scripted `extract`/`gate`/`SCN`
+client-side mockup) has been removed — the component makes a real API call for every message and
+renders only what the backend returns. Opening `ScribeIntake.dc.html` without a running API simply
+shows the honest reconnect message instead of replaying canned data, and the Proof tab stays empty
+until `/proof/leaderboard.json` loads (no placeholder scores).
 
-```text
-http://localhost:8000/?demo=1     # original simulation, zero API calls
-```
-
-In DEMO_MODE the client-side `RULES`/`extract` are the simulation only — **never the safety
-authority when connected.** The connected path performs no safety decision.
-
-## How the data swap works (connected mode)
+## How the data flows
 
 - `handleSend` → `POST /session/{id}/message`, consumes the **SSE** `token`* stream into the
   assistant bubble, then applies the terminal `turn` event: the backend **strip** on the patient
@@ -65,7 +63,9 @@ authority when connected.** The connected path performs no safety decision.
 - `openSummary` → `GET /session/{id}/summary`, mapped into the existing summary sheet. If the
   intake isn't complete the API's honest reason is surfaced as a message (no fabricated SOAP).
 - Proof tab → `GET /session/{id}/trace` (real cache-aware cost) + the real `leaderboard.json`
-  (Split 07/08) and `cost_report.json` (Split 09).
+  (Split 07/08) and `cost_report.json` (Split 09). The eval header (scenario count / run count),
+  the deterministic + distributional rows (incl. honest `pending` values), and the framing
+  sentence are all read from `leaderboard.json` — no hardcoded scores or sparklines.
 - A network/stream error shows a friendly reconnect line and preserves the thread — never blank.
 
 ## Tests

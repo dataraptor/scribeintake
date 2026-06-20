@@ -2,8 +2,8 @@
 
 These models mirror the orchestrator's :class:`~scribeintake.orchestrator.AssistantTurn` /
 :class:`~scribeintake.models.SOAP` / trace rows and **map onto the frontend's existing
-view-model field names** (the ``.dc.html`` mockup: ``stripVM`` / ``emitAssistant`` /
-``fireEmergency`` / ``openSummary`` / the trace rows), so Split 11 is a data-layer swap with no
+view-model field names** (the ``.dc.html`` component: ``stripVM`` / ``applyTurn`` /
+``toEmergency`` / ``openSummary`` / the trace rows), so Split 11 is a data-layer swap with no
 UI reshape. Where the mockup uses camelCase (the inline-strip data: ``ruleId`` / ``ruleLevel`` /
 ``ruleSource`` / ``signalsView`` / ``toolsNote``; ``agentNet``; ``hasNote``; ``chunkId``) the
 field carries a camelCase **alias** so the JSON keys match exactly — FastAPI serialises responses
@@ -70,7 +70,7 @@ class Action(_Base):
 
 
 class EmergencyPayload(_Base):
-    """The emergency/crisis sheet (mockup ``fireEmergency``), built from the core templates.
+    """The emergency/crisis sheet (frontend ``toEmergency``), built from the core templates.
 
     The safety wording (``kicker`` / ``heading`` / ``body`` / ``actions``) is copied verbatim
     from ``core/safety/templates.py`` — never re-authored here. Only ``caption`` (a provenance

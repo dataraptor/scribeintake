@@ -8,9 +8,9 @@
  * `new Function`, so it resolves `SI_API` from the global scope).
  *
  * Centralising the renames here (not scattered through the class) is the whole point: Split 11 is
- * a data-layer swap, not a UI reshape. When `window.SI_API` is absent (the .dc.html opened
- * standalone in the design tool) the component falls back to its built-in DEMO_MODE simulation,
- * so the mockup still runs offline with no backend.
+ * a data-layer swap, not a UI reshape. The frontend holds no offline/demo data — every value it
+ * renders comes from these calls. If `window.SI_API` is absent the component shows an honest error
+ * rather than fabricating a reply.
  */
 (function () {
   "use strict";
@@ -43,9 +43,6 @@
     return "";
   }
   const API_BASE = resolveApiBase();
-  // DEMO_MODE forces the offline simulation even with a client present (?demo=1 or window flag).
-  const DEMO_MODE =
-    window.DEMO_MODE === true || qsParam("demo") === "1" || qsParam("demo") === "true";
 
   function url(path) {
     return API_BASE.replace(/\/$/, "") + path;
@@ -181,9 +178,11 @@
   }
 
   // The committed proof artifacts (real leaderboard + cost report), served by the API under
-  // /proof/* (see api/main.py). Returns view-model-ready ldDet/ldDist + a traceCost fallback.
+  // /proof/* (see api/main.py). Returns the view-model-ready ldDet/ldDist, the leaderboard's own
+  // framing sentence, an EVAL header derived from its meta, and the cache-aware traceCost label.
+  // Everything here is the real artifact — there are no fabricated numbers.
   async function getProof() {
-    const out = { ldDet: null, ldDist: null, traceCost: "" };
+    const out = { ldDet: null, ldDist: null, traceCost: "", framing: "", evalLabel: "" };
     try {
       const lb = await fetch(url("/proof/leaderboard.json")).then(function (r) {
         return r.ok ? r.json() : null;
@@ -191,6 +190,8 @@
       const board = toLeaderboard(lb);
       out.ldDet = board.ldDet;
       out.ldDist = board.ldDist;
+      out.framing = board.framing;
+      out.evalLabel = board.evalLabel;
     } catch (e) {}
     try {
       const cr = await fetch(url("/proof/cost_report.json")).then(function (r) {
@@ -295,20 +296,46 @@
     return Math.round(ms) + "ms";
   }
 
-  // Flat leaderboard.metrics[] (Split 07/08) -> the two proof-tab groups.
+  // The real leaderboard.json (Split 07/08) -> the proof-tab view-model. Prefers the artifact's own
+  // precomputed ldDet/ldDist arrays (which already carry the honest values incl. "pending" and a
+  // null spark); falls back to deriving them from metrics[]. Also surfaces the artifact's `framing`
+  // sentence and an EVAL header built from its meta — no hardcoded scenario counts or scores.
   function toLeaderboard(lb) {
-    if (!lb || !Array.isArray(lb.metrics)) return { ldDet: null, ldDist: null };
-    const SPARK = "▁▂▃▅▆";
-    const ldDet = [];
-    const ldDist = [];
-    lb.metrics.forEach(function (m) {
-      if (m.group === "deterministic") {
-        ldDet.push({ label: m.label, value: m.display });
-      } else if (m.group === "distributional") {
-        ldDist.push({ label: m.label, value: m.display, spark: SPARK });
-      }
-    });
-    return { ldDet: ldDet.length ? ldDet : null, ldDist: ldDist.length ? ldDist : null };
+    const empty = { ldDet: null, ldDist: null, framing: "", evalLabel: "" };
+    if (!lb) return empty;
+    let ldDet = Array.isArray(lb.ldDet)
+      ? lb.ldDet.map(function (r) {
+          return { label: r.label, value: r.value };
+        })
+      : null;
+    let ldDist = Array.isArray(lb.ldDist)
+      ? lb.ldDist.map(function (r) {
+          return { label: r.label, value: r.value, spark: r.spark || "" };
+        })
+      : null;
+    if ((!ldDet || !ldDist) && Array.isArray(lb.metrics)) {
+      const det = [];
+      const dist = [];
+      lb.metrics.forEach(function (m) {
+        if (m.group === "deterministic") det.push({ label: m.label, value: m.display });
+        else if (m.group === "distributional")
+          dist.push({ label: m.label, value: m.display, spark: m.spark || "" });
+      });
+      ldDet = ldDet || (det.length ? det : null);
+      ldDist = ldDist || (dist.length ? dist : null);
+    }
+    const meta = lb.meta || {};
+    let evalLabel = "";
+    if (meta.scenario_count != null) {
+      const runs = meta.n_runs != null ? meta.n_runs : 0;
+      evalLabel = "EVAL · " + meta.scenario_count + " SCENARIOS · " + runs + "× RUNS";
+    }
+    return {
+      ldDet: ldDet && ldDet.length ? ldDet : null,
+      ldDist: ldDist && ldDist.length ? ldDist : null,
+      framing: lb.framing || "",
+      evalLabel: evalLabel,
+    };
   }
 
   function reconnectMsg() {
@@ -318,7 +345,6 @@
   // --- public surface -----------------------------------------------------------------------
   window.SI_API = {
     API_BASE: API_BASE,
-    DEMO_MODE: DEMO_MODE,
     createSession: createSession,
     sendMessage: sendMessage,
     getSummary: getSummary,

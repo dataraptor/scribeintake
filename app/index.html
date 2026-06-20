@@ -10,7 +10,7 @@
   It connects the existing DC component (ScribeIntake.dc.html) to the FastAPI service. Nothing is
   rebuilt: this page only (1) picks the API base, (2) loads the api-client + the vendored React +
   the DC runtime, and (3) injects the component's <x-dc> + logic markup into the DOM so support.js
-  boots it. The component itself decides connected-vs-DEMO_MODE from window.SI_API.
+  boots it. The component renders only what the API returns — it carries no offline/demo data.
 
   Serving: run `uvicorn api.main:app` and open http://localhost:8000 (the API mounts this folder
   and serves the page same-origin). For a split-origin dev setup (static server + separate API)

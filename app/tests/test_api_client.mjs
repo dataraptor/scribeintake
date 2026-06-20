@@ -49,7 +49,7 @@ function loadClient({ apiBase, search = "", fetchImpl } = {}) {
   return win.SI_API;
 }
 
-// --- config / DEMO_MODE ----------------------------------------------------------------------
+// --- config ----------------------------------------------------------------------------------
 test("API_BASE: explicit window.API_BASE wins (incl. empty string = same-origin)", () => {
   assert.equal(loadClient({ apiBase: "" }).API_BASE, "");
   assert.equal(loadClient({ apiBase: "http://x:8000" }).API_BASE, "http://x:8000");
@@ -59,9 +59,9 @@ test("API_BASE: ?api= overrides when window.API_BASE unset", () => {
   assert.equal(loadClient({ search: "?api=http://h:9000" }).API_BASE, "http://h:9000");
 });
 
-test("DEMO_MODE: ?demo=1 forces demo", () => {
-  assert.equal(loadClient({ apiBase: "", search: "?demo=1" }).DEMO_MODE, true);
-  assert.equal(loadClient({ apiBase: "" }).DEMO_MODE, false);
+test("no DEMO_MODE: the client never exposes an offline/demo switch", () => {
+  assert.equal("DEMO_MODE" in loadClient({ apiBase: "", search: "?demo=1" }), false);
+  assert.equal(loadClient({ apiBase: "" }).DEMO_MODE, undefined);
 });
 
 // --- adapters --------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ test("toTraceRows: formats latency + carries cost/event/local", () => {
   assert.equal(rows[0].cost, 0.0055);
 });
 
-test("toLeaderboard: splits flat metrics into ldDet/ldDist groups", () => {
+test("toLeaderboard: derives ldDet/ldDist from metrics[] without fabricating a sparkline", () => {
   const lb = {
     metrics: [
       { label: "Rule correctness", group: "deterministic", display: "100%" },
@@ -163,8 +163,29 @@ test("toLeaderboard: splits flat metrics into ldDet/ldDist groups", () => {
   assert.equal(out.ldDet.length, 2);
   assert.equal(out.ldDet[0].value, "100%");
   assert.equal(out.ldDist.length, 1);
-  assert.ok(out.ldDist[0].spark); // distributional rows carry a sparkline
-  assert.deepEqual(API.toLeaderboard(null), { ldDet: null, ldDist: null });
+  // No fake sparkline: a metric with no `spark` of its own renders an empty one (honest "pending").
+  assert.equal(out.ldDist[0].spark, "");
+  assert.deepEqual(API.toLeaderboard(null), {
+    ldDet: null,
+    ldDist: null,
+    framing: "",
+    evalLabel: "",
+  });
+});
+
+test("toLeaderboard: prefers the artifact's precomputed arrays + surfaces framing/evalLabel", () => {
+  const lb = {
+    meta: { scenario_count: 65, n_runs: 0 },
+    framing: "0 missed on the frozen set; end-to-end recall pending.",
+    ldDet: [{ label: "Rule correctness", value: "100%" }],
+    ldDist: [{ label: "E2E recall", value: "pending", spark: null }],
+  };
+  const out = API.toLeaderboard(lb);
+  assert.equal(out.ldDet[0].value, "100%");
+  assert.equal(out.ldDist[0].value, "pending");
+  assert.equal(out.ldDist[0].spark, ""); // null spark normalised to "" (no fabricated bars)
+  assert.equal(out.framing, lb.framing);
+  assert.equal(out.evalLabel, "EVAL · 65 SCENARIOS · 0× RUNS");
 });
 
 // --- SSE parsing via sendMessage with a fake streamed Response --------------------------------

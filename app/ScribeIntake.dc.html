@@ -120,13 +120,13 @@
                     </div>
                     <sc-if value="{{ m.strip.expanded }}" hint-placeholder-val="{{ true }}">
                       <div style="margin-top:6px;border:1px solid #ECEEF1;border-radius:8px;background:#F7F8FA;padding:11px 12px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5C616B;line-height:1.5">
-                        <div style="display:flex;justify-content:space-between;color:#9398A1;letter-spacing:.05em;font-size:10px">EXTRACT<span>code · 4ms</span></div>
+                        <div style="display:flex;justify-content:space-between;color:#9398A1;letter-spacing:.05em;font-size:10px">EXTRACT<span>code</span></div>
                         <div style="display:flex;flex-wrap:wrap;gap:9px;margin:6px 0 11px">
                           <sc-for list="{{ m.strip.signalsView }}" as="sg" hint-placeholder-count="4">
                             <span style="{{ sg.style }}">{{ sg.name }} {{ sg.mark }}</span>
                           </sc-for>
                         </div>
-                        <div style="display:flex;justify-content:space-between;color:#9398A1;letter-spacing:.05em;font-size:10px">GATE<span>code · 1ms</span></div>
+                        <div style="display:flex;justify-content:space-between;color:#9398A1;letter-spacing:.05em;font-size:10px">GATE<span>code</span></div>
                         <div style="margin:5px 0 11px">
                           <div>rule <span style="color:#17191E">{{ m.strip.ruleId }}</span></div>
                           <div style="{{ m.strip.ruleColor }}">→ {{ m.strip.ruleLevel }}</div>
@@ -187,7 +187,7 @@
       <!-- PROOF -->
       <sc-if value="{{ isProof }}" hint-placeholder-val="{{ true }}">
         <div style="flex:1;overflow-y:auto;padding:18px 16px;background:#fff">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9398A1;letter-spacing:.08em;margin-bottom:14px">EVAL · 50 SCENARIOS · 3× RUNS</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9398A1;letter-spacing:.08em;margin-bottom:14px">{{ evalLabel }}</div>
 
           <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#5C616B;letter-spacing:.04em;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span style="color:#1F8A54">🔒</span>DETERMINISTIC · GATED</div>
           <div style="border:1px solid #ECEEF1;border-radius:10px;overflow:hidden;margin-bottom:18px">
@@ -211,7 +211,9 @@
             </sc-for>
           </div>
 
-          <div style="background:#F7F8FA;border:1px solid #ECEEF1;border-radius:10px;padding:13px 14px;font-size:12.5px;line-height:1.55;color:#5C616B;font-style:italic;margin-bottom:24px">"0 missed on the frozen set (deterministic); end-to-end recall 0.94 and rising — not 100%, period."</div>
+          <sc-if value="{{ hasFraming }}" hint-placeholder-val="{{ true }}">
+            <div style="background:#F7F8FA;border:1px solid #ECEEF1;border-radius:10px;padding:13px 14px;font-size:12.5px;line-height:1.55;color:#5C616B;font-style:italic;margin-bottom:24px">{{ framing }}</div>
+          </sc-if>
 
           <div style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#9398A1;letter-spacing:.08em;margin-bottom:4px">{{ traceTitle }}</div>
           <div style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5C616B;margin-bottom:12px">{{ traceCost }}</div>
@@ -361,136 +363,24 @@ class Component extends DCLogic {
     this.threadRef = React.createRef();
     this._timers = [];
     this._mid = 0;
-    this.BANDS = ['self_care','gp_routine','gp_urgent','ER'];
     this.SLOTS = [
       ['chief_complaint','chief_complaint'],['hpi.onset','hpi.onset'],['hpi.location','hpi.location'],
       ['hpi.character','hpi.character'],['hpi.severity','hpi.severity'],['hpi.radiation','hpi.radiation'],
       ['hpi.timing','hpi.timing'],['medications','medications'],['allergies','allergies'],
       ['past_history','past_medical_history'],['social','social_context'],['red_flags_screened','red_flags_screened']
     ];
-    this.RULES = [
-      {id:'acs_chest_pain', level:'EMERGENCY', source:'MedlinePlus · Heart Attack',
-        test:s=> s.chest_pain && (s.pain_radiation_arm_jaw_back||s.diaphoresis||s.dyspnea||s.nausea)},
-      {id:'stroke_fast', level:'EMERGENCY', source:'CDC · Stroke (FAST)',
-        test:s=> s.face_droop||s.limb_weakness||s.speech_difficulty||s.sudden_vision_loss||s.sudden_confusion},
-      {id:'thunderclap_headache', level:'EMERGENCY', source:'MedlinePlus · Headache',
-        test:s=> s.worst_headache_ever||s.thunderclap_headache},
-      {id:'meningitis_signs', level:'EMERGENCY', source:'CDC · Meningitis',
-        test:s=> s.fever && s.neck_stiffness},
-      {id:'suicidal_crisis', level:'EMERGENCY', crisis:true, source:'988 Suicide & Crisis Lifeline',
-        test:s=> s.suicidal_ideation||s.self_harm_intent},
-      {id:'respiratory_distress', level:'EMERGENCY', source:'MedlinePlus · Breathing Problems',
-        test:s=> s.cant_breathe || (s.dyspnea && s.spo2!=null && s.spo2<92)},
-      {id:'anaphylaxis', level:'EMERGENCY', source:'MedlinePlus · Anaphylaxis',
-        test:s=> (s.throat_or_tongue_swelling||(s.hives&&s.dyspnea)) && s.known_allergen_exposure},
-      {id:'htn_emergency', level:'EMERGENCY', source:'NHLBI · High Blood Pressure',
-        test:s=> ((s.sbp!=null&&s.sbp>=180)||(s.dbp!=null&&s.dbp>=120)) && (s.chest_pain||s.dyspnea||s.sudden_vision_loss||s.sudden_confusion||s.worst_headache_ever)},
-      {id:'severe_hypoglycemia', level:'EMERGENCY', source:'NIDDK · Low Blood Glucose',
-        test:s=> s.glucose!=null && s.glucose<54},
-      {id:'chest_pain_isolated', level:'URGENT', source:'MedlinePlus · Chest Pain',
-        test:s=> s.chest_pain && !(s.pain_radiation_arm_jaw_back||s.diaphoresis||s.dyspnea||s.nausea)},
-      {id:'htn_urgency', level:'URGENT', source:'NHLBI · High Blood Pressure',
-        test:s=> ((s.sbp!=null&&s.sbp>=180)||(s.dbp!=null&&s.dbp>=120)) && !(s.chest_pain||s.dyspnea||s.sudden_vision_loss||s.sudden_confusion||s.worst_headache_ever)}
-    ];
-    const ML='https://medlineplus.gov', NH='https://www.nhlbi.nih.gov/health';
-    this.SCN = {
-      chest: { chief:'chest tightness, exertional', onset:'this morning', band:'gp_urgent',
-        observations:[
-          {text:'Same-day clinician evaluation advised for new exertional chest discomfort.', cited:true, source:'MedlinePlus', chunk:'chk_0142'},
-          {text:'Acute coronary red-flags screened; none triggered this session.', uncited:true}],
-        steps:[
-          {ask:'Thanks for telling me. Does the tightness spread to your arm, jaw, or back — and are you short of breath or sweating?', slot:'hpi.radiation',
-            sources:[{source:'MedlinePlus', chunkId:'chk_0142', url:ML+'/heartattack.html', score:0.88}],
-            replies:[
-              {text:"No, it stays in my chest. No sweating or trouble breathing.", fills:{'hpi.radiation':{value:'none',conf:'high'}}},
-              {text:"It spreads to my left arm and I'm sweaty."},
-              {text:"Honestly I just feel really off and heavy, not myself."}
-            ]},
-          {ask:'On a scale of 0 to 10, how bad is the tightness right now?', slot:'hpi.severity',
-            replies:[
-              {text:'About a 4.', fills:{'hpi.severity':{value:'4/10',conf:'high'}}},
-              {text:'Maybe a 6 or 7?', fills:{'hpi.severity':{value:'6/10',conf:'medium'}}},
-              {text:"I'm honestly not sure.", fills:{'hpi.severity':{value:'unknown',conf:'unknown'}}}
-            ]},
-          {ask:'Are you taking any medications regularly?', slot:'medications',
-            replies:[
-              {text:'Lisinopril for blood pressure.', fills:{'medications':{value:'lisinopril',conf:'high'}}},
-              {text:'None.', fills:{'medications':{value:'none',conf:'high'}}}
-            ]},
-          {ask:'And any allergies to medications?', slot:'allergies', last:true,
-            replies:[
-              {text:'None that I know of.', fills:{'allergies':{value:'none reported',conf:'high'}}},
-              {text:'Penicillin.', fills:{'allergies':{value:'penicillin',conf:'high'}}}
-            ]}
-        ]},
-      headache: { chief:'tension-type headache', onset:'two days', band:'gp_routine',
-        observations:[
-          {text:'Pattern consistent with tension-type headache; reassurance and safety-netting advised.', cited:true, source:'MedlinePlus', chunk:'chk_0210'},
-          {text:'No meningitis or thunderclap features reported.', uncited:true}],
-        steps:[
-          {ask:'Do you have any fever or neck stiffness, or is this the worst headache of your life?', slot:'hpi.character',
-            sources:[{source:'MedlinePlus', chunkId:'chk_0210', url:ML+'/headache.html', score:0.84}],
-            replies:[
-              {text:'No fever or neck stiffness — it comes and goes.', fills:{'hpi.character':{value:'dull, intermittent',conf:'high'}}},
-              {text:"Actually it's the worst headache of my life, came on suddenly."}
-            ]},
-          {ask:'Does anything make it better or worse?', slot:'hpi.relieving',
-            replies:[
-              {text:'Ibuprofen helps a bit.', fills:{'hpi.relieving':{value:'ibuprofen helps',conf:'high'}}},
-              {text:'Bright light makes it worse.', fills:{'hpi.relieving':{value:'photophobia',conf:'medium'}}}
-            ]},
-          {ask:'Are you on any other medications?', slot:'medications',
-            replies:[{text:'No other medications.', fills:{'medications':{value:'none',conf:'high'}}}]},
-          {ask:'And any allergies?', slot:'allergies', last:true,
-            replies:[{text:'No allergies.', fills:{'allergies':{value:'none reported',conf:'high'}}}]}
-        ]},
-      bp: { chief:'elevated blood pressure reading', band:'gp_urgent',
-        observations:[
-          {text:'Elevated reading without end-organ symptoms; same-day GP or urgent care advised.', cited:true, source:'NHLBI', chunk:'chk_0301'},
-          {text:'Home-device reading; in-clinic confirmation recommended.', uncited:true}],
-        steps:[
-          {ask:'Are you having any chest pain, headache, vision changes, or confusion right now?', slot:'hpi.character',
-            sources:[{source:'NHLBI', chunkId:'chk_0301', url:NH+'/high-blood-pressure', score:0.86}],
-            replies:[
-              {text:'No, I feel fine otherwise. No chest pain or headache.', fills:{'hpi.character':{value:'asymptomatic',conf:'high'}}},
-              {text:'Now that you mention it — a bad headache and blurry vision.'}
-            ]},
-          {ask:'Are you on any blood pressure medications?', slot:'medications',
-            replies:[
-              {text:'Amlodipine, but I missed a few doses.', fills:{'medications':{value:'amlodipine (missed doses)',conf:'medium'}}},
-              {text:'None.', fills:{'medications':{value:'none',conf:'high'}}}
-            ]},
-          {ask:'And any allergies to medications?', slot:'allergies', last:true,
-            replies:[{text:'None that I know of.', fills:{'allergies':{value:'none reported',conf:'high'}}}]}
-        ]},
-      generic: { chief:null, band:'gp_routine',
-        observations:[{text:'Symptoms documented for clinician review; general safety-netting advised.', cited:true, source:'MedlinePlus', chunk:'chk_0500'}],
-        steps:[
-          {ask:'When did this start, and how would you describe it?', slot:'hpi.onset',
-            replies:[{text:'A couple of days ago, fairly mild.', fills:{'hpi.onset':{value:'~2 days ago',conf:'high'}}}]},
-          {ask:'How severe is it, 0 to 10?', slot:'hpi.severity',
-            replies:[{text:'Around a 3.', fills:{'hpi.severity':{value:'3/10',conf:'high'}}},{text:'Hard to say.', fills:{'hpi.severity':{value:'unknown',conf:'unknown'}}}]},
-          {ask:'Any medications or allergies I should note?', slot:'medications', last:true,
-            replies:[{text:'No meds, no allergies.', fills:{'medications':{value:'none',conf:'high'},'allergies':{value:'none reported',conf:'high'}}}]}
-        ]}
-    };
     this.state = this.freshState();
   }
 
-  // Connected mode = a Split-11 API client is present and not forced into offline DEMO_MODE.
-  // When SI_API is absent (the .dc.html opened standalone in the design tool) the original
-  // client-side simulation runs unchanged, so the mockup still demos offline.
-  isConnected(){ return typeof window!=='undefined' && !!window.SI_API && !window.SI_API.DEMO_MODE; }
-
   freshState(){
     return {
-      screen:'intake', messages:[], slots:{}, signals:{},
-      sbp:null, dbp:null, glucose:null, spo2:null,
-      scenario:null, step:-1, triageFloor:'self_care', floorPinned:false,
+      screen:'intake', messages:[], slots:{},
+      triageFloor:'self_care', floorPinned:false,
       quickReplies:[], sheet:'none', emergency:null, summary:null,
       halted:false, readyToSummarize:false, typing:false, trace:[], copied:false, sheetIn:false,
-      // connected-mode data layer (null in DEMO_MODE → dummy fallbacks in renderVals)
+      // data layer — every field below is populated from the API (api-client.js); null until loaded.
       sessionId:null, disclaimer:'', ldDet:null, ldDist:null, traceCost:null, apiError:null,
+      evalLabel:'', framing:'',
       isWide: typeof window!=='undefined' && window.innerWidth>=720
     };
   }
@@ -501,12 +391,14 @@ class Component extends DCLogic {
     this._onResize=()=>{ const w=window.innerWidth>=720; if(w!==this.state.isWide) this.setState({isWide:w}); };
     window.addEventListener('resize', this._onResize);
     // Load the real leaderboard + cost report (Split 07/08/09 artifacts) for the Proof tab.
-    if(this.isConnected() && window.SI_API.getProof){
+    if(window.SI_API && window.SI_API.getProof){
       window.SI_API.getProof().then(p=>{
         const patch={};
         if(p.ldDet) patch.ldDet=p.ldDet;
         if(p.ldDist) patch.ldDist=p.ldDist;
         if(p.traceCost && !this.state.traceCost) patch.traceCost=p.traceCost;
+        if(p.evalLabel) patch.evalLabel=p.evalLabel;
+        if(p.framing) patch.framing=p.framing;
         if(Object.keys(patch).length) this.setState(patch);
       }).catch(()=>{});
     }
@@ -514,96 +406,12 @@ class Component extends DCLogic {
   componentDidUpdate(){ const t=this.threadRef.current; if(t) t.scrollTop=t.scrollHeight; }
   componentWillUnmount(){ this._timers.forEach(clearTimeout); if(this._onResize) window.removeEventListener('resize', this._onResize); }
 
-  extract(text){
-    const t=(text||'').toLowerCase();
-    const s={...this.state.signals};
-    // clause-aware: don't set a signal if its phrase sits in a negated clause ("no sweating", "no chest pain")
-    const set=(k,re)=>{
-      const m=re.exec(t); if(!m) return;
-      const idx=m.index; let cs=0;
-      for(let i=idx;i>=0;i--){ if('.!?;—'.indexOf(t[i])>=0){ cs=i+1; break; } }
-      const clause=t.slice(cs, idx+m[0].length);
-      if(/\b(no|not|without|deny|denies|negative|never|none)\b|n't/.test(clause)) return;
-      s[k]=true;
-    };
-    set('chest_pain', /chest (pain|tight|pressure|heav|discomfort|ache)|tightness in (my |the )?chest|pain in (my |the )?chest/);
-    set('pain_radiation_arm_jaw_back', /(left |right )?arm (hurt|pain|ache|numb|weak)|spread(s|ing)? to (my )?(arm|jaw|back|shoulder)|radiat|into my (arm|jaw|back)/);
-    set('diaphoresis', /sweat|diaphor|clammy/);
-    set('dyspnea', /short(ness)? of breath|breathless|hard to breathe|out of breath|can'?t catch my breath|trouble breathing/);
-    set('nausea', /nause|queasy|sick to my stomach/);
-    set('face_droop', /face (is )?(droop|drooping|sagging)|droopy|one side of my face/);
-    set('limb_weakness', /arm (went |feels |is )?weak|leg (went |feels |is )?weak|weak(ness)? on one side/);
-    set('speech_difficulty', /slur|can'?t speak|trouble speaking/);
-    set('sudden_vision_loss', /lost (my )?vision|can'?t see|vision (went|loss)|blurry vision/);
-    set('sudden_confusion', /confus|disorient|can'?t think straight/);
-    set('worst_headache_ever', /worst headache|worst.*head.*(life|ever)/);
-    set('thunderclap_headache', /thunderclap|came on suddenly.*headache|sudden.{0,12}(severe|terrible).{0,12}headache|head.*explod/);
-    set('neck_stiffness', /neck (is )?stiff|stiff neck/);
-    set('fever', /fever|burning up/);
-    set('cant_breathe', /can'?t breathe|cannot breathe|choking|can'?t get air/);
-    set('throat_or_tongue_swelling', /throat.*swell|tongue.*swell|closing up/);
-    set('hives', /hives|welts|breaking out/);
-    set('known_allergen_exposure', /allerg|peanut|bee sting|shellfish/);
-    set('suicidal_ideation', /suicid|kill myself|end (my life|it all)|don'?t want to (live|be here)|not worth living/);
-    set('self_harm_intent', /hurt myself|harm myself|cut myself/);
-    set('vaginal_bleeding', /vaginal bleed/);
-    set('severe_abdominal_pain', /severe (abdominal|stomach|belly) pain/);
-    set('vomiting_blood', /vomit.*blood|throwing up blood/);
-    set('pregnant', /pregnan|expecting/);
-    set('head_injury', /hit my head|head injury/);
-    set('on_anticoagulant', /blood thinner|warfarin|eliquis|xarelto/);
-    let sbp=this.state.sbp, dbp=this.state.dbp, glucose=this.state.glucose, spo2=this.state.spo2;
-    const bp=t.match(/(\d{2,3})\s*(?:\/|over)\s*(\d{2,3})/); if(bp){ sbp=+bp[1]; dbp=+bp[2]; }
-    const gl=t.match(/(?:glucose|sugar|bg)\D{0,6}(\d{2,3})/); if(gl) glucose=+gl[1];
-    const o2=t.match(/(?:o2|sat|oxygen)\D{0,6}(\d{2,3})/); if(o2) spo2=+o2[1];
-    const sig={...s, sbp,dbp,glucose,spo2};
-    return {signals:s, sbp,dbp,glucose,spo2, sig};
-  }
-
-  gate(sig){
-    for(const r of this.RULES){ try{ if(r.test(sig)) return {level:r.level, rule:r.id, source:r.source, crisis:!!r.crisis}; }catch(e){} }
-    return {level:'CLEAR', rule:'', source:'', crisis:false};
-  }
-
-  assessEscalation(text, sig){
-    const t=(text||'').toLowerCase();
-    const soft=['off','not myself','not right','heavy','weird','strange','funny','exhausted','drained','foggy'];
-    let c=0; soft.forEach(w=>{ if(t.includes(w)) c++; });
-    if(c>=2 && (sig.chest_pain || this.state.scenario==='chest')) return true;
-    return null;
-  }
-
-  detectScenario(text){
-    const t=(text||'').toLowerCase();
-    if(/chest|tightness/.test(t)) return 'chest';
-    if(/headache|migraine|head /.test(t)) return 'headache';
-    if(/blood pressure|\bbp\b|monitor|\d{2,3}\s*(?:\/|over)\s*\d{2,3}/.test(t)) return 'bp';
-    return 'generic';
-  }
-
-  buildSignalsView(scenario, sig){
-    const map={
-      chest:['chest_pain','pain_radiation_arm_jaw_back','diaphoresis','dyspnea'],
-      headache:['worst_headache_ever','thunderclap_headache','neck_stiffness','fever'],
-      bp:['sbp','dbp','chest_pain','sudden_vision_loss'],
-      generic:['chest_pain','dyspnea','fever','severe_abdominal_pain']
-    };
-    const list=map[scenario]||map.generic;
-    return list.map(k=>{
-      if(['sbp','dbp','glucose','spo2'].includes(k)){ const v=sig[k]; return {name:k, mark: v!=null?String(v):'—', style:'color:'+(v!=null?'#17191E':'#C7CBD1')}; }
-      const v=!!sig[k]; const nm=k==='pain_radiation_arm_jaw_back'?'radiation':k;
-      return {name:nm, mark: v?'✓':'–', style:'color:'+(v?'#17191E':'#9398A1')};
-    });
-  }
-
-  bandFor(level){ return level==='EMERGENCY'?'ER': level==='URGENT'?'gp_urgent':'self_care'; }
-
-  // Front door: route to the API in connected mode, else the offline simulation.
-  handleSend(text, fills){
+  // Front door: every message goes to the API. The client holds no safety/business logic.
+  handleSend(text){
     if(this.state.halted) return;
     text=(text||'').trim(); if(!text) return;
-    if(this.isConnected()) return this.handleSendConnected(text);
-    return this.handleSendDemo(text, fills);
+    if(!window.SI_API) return this.onApiError();
+    this.handleSendConnected(text);
   }
 
   // ------------------------------------------------------------------ connected (API) data path
@@ -636,7 +444,7 @@ class Component extends DCLogic {
   // reply + sources on the assistant bubble, floor/slots/trace, and the backend emergency sheet.
   applyTurn(pid, aid, turn){
     const A=window.SI_API;
-    const strip={...A.stripFromTurn(turn), phase:3, expanded:!!this.props.expandStrips};
+    const strip={...A.stripFromTurn(turn), model: turn.model||null, phase:3, expanded:!!this.props.expandStrips};
     const sources=(turn.sources||[]).map(s=>({source:s.source, chunkId:s.chunkId, url:s.url, score:s.score}));
     const slots=this.slotsFromOpen(turn.openSlots||[]);
     this.setState(s=>({
@@ -666,7 +474,7 @@ class Component extends DCLogic {
   }
 
   refreshTrace(){
-    if(!this.isConnected()) return;
+    if(!window.SI_API) return;
     const sid=this.state.sessionId; if(!sid) return;
     window.SI_API.getTrace(sid).then(t=>{ this.setState({trace:t.rows, traceCost:t.traceCost||this.state.traceCost}); }).catch(()=>{});
   }
@@ -680,116 +488,7 @@ class Component extends DCLogic {
       messages:[...s.messages, {id:'m'+(this._mid++), role:'assistant', content: msg}] }));
   }
 
-  // -------------------------------------------------------------------- offline (DEMO) data path
-  handleSendDemo(text, fills){
-    if(this.state.halted) return;
-    text=(text||'').trim(); if(!text) return;
-    const isFirst = this.state.step===-1 && this.state.messages.filter(m=>m.role==='patient').length===0;
-    const ex=this.extract(text); const sig=ex.sig;
-    let scenario=this.state.scenario; const slots={...this.state.slots};
-    if(isFirst){
-      scenario=this.detectScenario(text);
-      const sc=this.SCN[scenario];
-      slots['chief_complaint']={value: sc.chief || text.slice(0,46), conf:'high'};
-      slots['red_flags_screened']={value:'18 rules', conf:'high'};
-      if(sc.onset) slots['hpi.onset']={value:sc.onset, conf:'high'};
-    } else {
-      const sc=this.SCN[this.state.scenario]||this.SCN.generic;
-      const st=sc.steps[this.state.step];
-      if(fills){ for(const k in fills) slots[k]=fills[k]; }
-      else if(st && st.slot){ slots[st.slot]={value:text, conf:'high'}; }
-    }
-    const g=this.gate(sig);
-    let agentNet=null;
-    if(g.level!=='EMERGENCY') agentNet=this.assessEscalation(text, sig);
-    const emergency = g.level==='EMERGENCY' || !!agentNet;
-    const level = emergency?'EMERGENCY': g.level;
-    const crisis = !!g.crisis;
-    let floor=this.state.triageFloor, pinned=this.state.floorPinned;
-    const bumped=this.bandFor(level);
-    if(this.BANDS.indexOf(bumped) > this.BANDS.indexOf(floor)) floor=bumped;
-    if(level==='URGENT'||level==='EMERGENCY') pinned=true;
-    const sv=this.buildSignalsView(scenario, sig);
-    const ruleId = agentNet?'assess_escalation' : (g.rule || (level==='CLEAR'?'no rule matched':'—'));
-    const strip={
-      phase:0, expanded: !!this.props.expandStrips, level, agentNet:!!agentNet, crisis,
-      ruleId, ruleLevel: level, ruleSource: agentNet?'second-net judgment · clinician review':(g.source||'—'),
-      signalsView: sv,
-      toolsNote: emergency ? (agentNet?'assess_escalation → EMERGENCY (regex missed it)':'gate short-circuited — agent never ran') : '',
-      _g:g
-    };
-    const id='m'+(this._mid++);
-    const pmsg={id, role:'patient', content:text, strip};
-    const trace=[...this.state.trace, {tool:'extract · gate', model:'—', latency:'5ms', cost:0, local:true}];
-    this.setState({
-      messages:[...this.state.messages, pmsg], slots, scenario, signals:ex.signals,
-      sbp:ex.sbp, dbp:ex.dbp, glucose:ex.glucose, spo2:ex.spo2,
-      triageFloor:floor, floorPinned:pinned, quickReplies:[], readyToSummarize:false, trace, copied:false
-    });
-    this.runStrip(id, emergency, crisis, !!agentNet, g);
-  }
-
-  updateStrip(id, fn){
-    this.setState(s=>({messages: s.messages.map(m=> m.id===id && m.strip ? {...m, strip: fn(m.strip)} : m)}));
-  }
-
-  runStrip(id, emergency, crisis, agentNet, g){
-    const d = emergency ? [250,520,780] : [120,260,400];
-    this._timers.push(setTimeout(()=>this.updateStrip(id, s=>({...s, phase:1})), d[0]));
-    this._timers.push(setTimeout(()=>this.updateStrip(id, s=>({...s, phase:2})), d[1]));
-    this._timers.push(setTimeout(()=>this.updateStrip(id, s=>({...s, phase:3})), d[2]));
-    if(emergency){
-      this._timers.push(setTimeout(()=>this.fireEmergency(crisis, agentNet, g), d[2]+320));
-    } else {
-      this._timers.push(setTimeout(()=>this.setState({typing:true}), d[2]+150));
-      this._timers.push(setTimeout(()=>this.emitAssistant(), d[2]+820));
-    }
-  }
-
-  fireEmergency(crisis, agentNet, g){
-    let em;
-    if(crisis){
-      em={crisis:true, kicker:'Crisis support', heading:'You deserve support right now', headColor:'#B5650B', actionColor:'#fff',
-        body:"It sounds like you're going through something really hard, and you don't have to face it alone. Please reach out right now — people are available 24/7.",
-        note:'This is an educational demo, not a crisis service.', hasNote:true,
-        actions:[{label:'Call or text 988', href:'tel:988'},{label:'Call 911', href:'tel:911'}],
-        caption:'Crisis template · compassionate tone · logged separately · no model call'};
-    } else if(agentNet){
-      em={kicker:'Possible emergency', heading:'This may be a medical emergency', headColor:'#D92D20', actionColor:'#E5484D',
-        body:'Based on what you described, your symptoms may indicate a medical emergency. Call 911 or go to the nearest emergency department now.', hasNote:false,
-        actions:[{label:'Call 911', href:'tel:911'}],
-        caption:'AI assessment · 2nd net · assess_escalation → EMERGENCY · the regex layer missed this phrasing'};
-    } else {
-      em={kicker:'Possible emergency', heading:'This may be a medical emergency', headColor:'#D92D20', actionColor:'#E5484D',
-        body:'Your symptoms may indicate a medical emergency. Call 911 or go to the nearest emergency department now.', hasNote:false,
-        actions:[{label:'Call 911', href:'tel:911'}],
-        caption:'Deterministic rule · '+(g.rule||'gate')+' · no model call · 0 missed on frozen set'};
-    }
-    const trace=[...this.state.trace, {tool:'safety_event · '+(agentNet?'agent':'gate'), model:agentNet?'sonnet':'—', latency:'1ms', cost:0, event:true}];
-    this.setState({halted:true, quickReplies:[], typing:false, trace});
-    this.openSheet({sheet:'emergency', emergency:em});
-  }
-
-  emitAssistant(){
-    const sc=this.SCN[this.state.scenario]||this.SCN.generic;
-    const next=this.state.step+1;
-    if(next < sc.steps.length){
-      const st=sc.steps[next];
-      const id='m'+(this._mid++);
-      const msg={id, role:'assistant', content: st.ask, model:'Sonnet 4.6', sources: st.sources||null, sourcesExpanded:false};
-      const replies=(st.replies||[]).map(r=>({text:r.text, onClick:()=>this.handleSend(r.text, r.fills||null)}));
-      const trace=[...this.state.trace, {tool:'record_intake', model:'Sonnet', latency:'0.8s', cost:0.0061}];
-      if(st.sources) trace.push({tool:'retrieve_guideline', model:'—', latency:'0.1s', cost:0, local:true});
-      this.setState({messages:[...this.state.messages, msg], step:next, quickReplies:replies, typing:false, trace});
-    } else {
-      this.setState({typing:false, quickReplies:[], readyToSummarize:true});
-    }
-  }
-
-  openSummary(){
-    if(this.isConnected()) return this.openSummaryConnected();
-    return this.openSummaryDemo();
-  }
+  openSummary(){ this.openSummaryConnected(); }
 
   // Connected: pull the real persisted SOAP; surface the honest reason gracefully if not ready.
   openSummaryConnected(){
@@ -804,29 +503,6 @@ class Component extends DCLogic {
       this.openSheet({sheet:'summary', summary: res.summary});
       this.refreshTrace();
     }).catch(()=>this.onApiError());
-  }
-
-  openSummaryDemo(){
-    const sc=this.SCN[this.state.scenario]||this.SCN.generic;
-    const slots=this.state.slots;
-    const FIELDS=[['chief_complaint','chief_complaint'],['hpi.onset','hpi.onset'],['hpi.severity','hpi.severity'],['hpi.radiation','hpi.radiation'],['medications','medications'],['allergies','allergies']];
-    const subjective=[]; const low=[];
-    FIELDS.forEach(([k,label])=>{
-      const sv=slots[k]; if(!sv) return;
-      let val=sv.value, color='#17191E';
-      if(sv.conf==='unknown'){ val='N/A (unsure)'; color='#9398A1'; low.push(label); }
-      else if(sv.conf==='medium'){ val=sv.value+'  ◐ unsure'; low.push(label); }
-      subjective.push({key:label, value:val, color});
-    });
-    const band=this.BANDS[Math.max(this.BANDS.indexOf(sc.band||'gp_routine'), this.BANDS.indexOf(this.state.triageFloor))];
-    const dotMap={self_care:'#28A86A', gp_routine:'#17191E', gp_urgent:'#E8930C', ER:'#E5484D'};
-    const obj = this.state.sbp!=null ? ('BP '+this.state.sbp+'/'+this.state.dbp+' (home)') : 'none reported';
-    const summary={ band, bandDot:dotMap[band]||'#17191E', subjective, low, lowText:low.join(', '),
-      objective:obj, observations:(sc.observations||[]).map(o=>({...o, cited:!!o.cited, uncited:!!o.uncited})),
-      redChecked:18, redTriggered:0 };
-    const trace=[...this.state.trace, {tool:'build_summary', model:'Opus', latency:'4.2s', cost:0.0214}];
-    this.setState({readyToSummarize:false, trace, copied:false});
-    this.openSheet({sheet:'summary', summary});
   }
 
   copySummary(){
@@ -848,8 +524,10 @@ class Component extends DCLogic {
   closeSheet(){ if(this.state.sheet!=='emergency') this.setState({sheet:'none', sheetIn:false}); }
   startOver(){ this._timers.forEach(clearTimeout); this._timers=[]; this._mid=0;
     const fresh=this.freshState();
-    // keep the loaded Proof leaderboard (static artifact); the session/trace reset for a new intake
+    // keep the loaded Proof artifacts (leaderboard rows + framing + eval header); only the
+    // session/trace reset for a new intake (componentDidMount's getProof runs once on first mount)
     fresh.ldDet=this.state.ldDet; fresh.ldDist=this.state.ldDist;
+    fresh.framing=this.state.framing; fresh.evalLabel=this.state.evalLabel;
     this.setState(fresh); }
 
   onSendClick(){ const el=this.inputRef.current; if(el && el.value.trim()){ const v=el.value; el.value=''; el.style.height='auto'; this.handleSend(v); } }
@@ -895,7 +573,8 @@ class Component extends DCLogic {
     return { segments:seg, meta, metaStyle:'color:'+metaColor, expanded:st.expanded,
       signalsView:st.signalsView||[], ruleId:st.ruleId||'—', ruleLevel:st.ruleLevel||'', ruleSource:st.ruleSource||'',
       ruleColor:'color:'+gc, tools, toolsNote:st.toolsNote||'', hasNote:!!st.toolsNote,
-      model: an?'sonnet · AI net':(lvl==='EMERGENCY'?'—':'sonnet'),
+      // the real per-turn model from the backend; a gate-only EMERGENCY ran no model.
+      model: (lvl==='EMERGENCY' && !an) ? '—' : (st.model || '—'),
       onToggle:()=>this.toggleStrip(x.id) };
   }
 
@@ -942,32 +621,21 @@ class Component extends DCLogic {
         else {glyph='●';col='#17191E';note='filled';} }
       return {key:label, glyph, glyphStyle:'color:'+col, note};
     });
-    const branchHint = st.scenario==='chest'?'radiation, exertion, severity': st.scenario==='headache'?'onset speed, neuro signs': st.scenario==='bp'?'symptoms, medications':'severity, timing';
+    const firstOpen=this.SLOTS.find(([k])=>!st.slots[k]);
+    const branchHint = firstOpen ? firstOpen[1] : 'complete';
 
-    // Connected: the real leaderboard (Split 07/08) loaded into state; else the demo placeholders.
-    const ldDet = st.ldDet || [
-      {label:'Rule correctness', value:'100%'},
-      {label:'Triage floor never violated', value:'100%'},
-      {label:'Schema validity', value:'100%'},
-      {label:'Frozen must-escalate', value:'0 miss'}
-    ];
-    const ldDist = st.ldDist || [
-      {label:'E2E recall', value:'0.94 ± .03', spark:'▁▂▃▅▆'},
-      {label:'SOAP field acc', value:'0.91 ± .04', spark:'▂▃▃▄▅'},
-      {label:'Faithfulness', value:'0.93 ± .05', spark:'▂▄▃▅▅'},
-      {label:'No-diagnosis', value:'≥ 0.99', spark:'▅▅▆▆▆'},
-      {label:'False-alarm', value:'0.07', spark:'▃▂▂▁▁'}
-    ];
+    // The real leaderboard (Split 07/08), loaded from the API into state; empty until it loads.
+    const ldDet = st.ldDet || [];
+    const ldDist = st.ldDist || [];
     const trace=st.trace.map(r=>({
       tool:r.tool, model:r.model, latency:r.latency,
       cost: r.cost>0 ? ('$'+r.cost.toFixed(3).replace(/^0/,'0').slice(0,5)) : '$0',
       toolStyle:'color:'+(r.event?'#D92D20':'#17191E'),
       costStyle:'color:'+(r.cost>0?'#5C616B':'#1F8A54')
     }));
-    const totalCost=st.trace.reduce((a,r)=>a+(r.cost||0),0);
-    const traceTitle='TRACE #a91f · '+st.messages.filter(m=>m.role==='patient').length+' TURNS';
-    // Connected: the real per-session cache-aware label (or the cost-report fallback); else demo.
-    const traceCost = st.traceCost || ('$'+totalCost.toFixed(3)+' · cache 61% saved');
+    const traceTitle='TRACE · '+st.messages.filter(m=>m.role==='patient').length+' TURNS';
+    // The real per-session cache-aware label from the API; empty until a turn populates it.
+    const traceCost = st.traceCost || '';
 
     const sheetOpen=st.sheet!=='none';
     const sheetBorder = st.sheet==='emergency' && st.emergency && !st.emergency.crisis ? 'border-top:2px solid #E5484D' : (st.sheet==='emergency'?'border-top:2px solid #E8930C':'');
@@ -996,10 +664,11 @@ class Component extends DCLogic {
       sheetOpen, sheetBorder,
       isEmergencySheet: st.sheet==='emergency', isSummarySheet: st.sheet==='summary', isSlotsSheet: st.sheet==='slots',
       emergency: st.emergency || {actions:[], headColor:'#D92D20', actionColor:'#E5484D', kicker:'', heading:'', body:'', caption:'', hasNote:false},
-      summary: st.summary ? {...st.summary, hasLow: st.summary.low.length>0} : {band:'', bandDot:'#17191E', subjective:[], observations:[], hasLow:false, lowText:'', objective:'', redChecked:18, redTriggered:0},
+      summary: st.summary ? {...st.summary, hasLow: st.summary.low.length>0} : {band:'', bandDot:'#17191E', subjective:[], observations:[], hasLow:false, lowText:'', objective:'', redChecked:0, redTriggered:0},
       copyLabel: st.copied?'Copied ✓':'Copy',
       slotsView, branchHint,
       ldDet, ldDist, trace, traceTitle, traceCost, traceEmpty: st.trace.length===0,
+      evalLabel: st.evalLabel, framing: st.framing, hasFraming: !!st.framing,
       scrimClick:()=>this.closeSheet(), stopProp:(e)=>e.stopPropagation(),
       startOver:()=>this.startOver(), openSummary:()=>this.openSummary(),
       copySummary:()=>this.copySummary(), exportSummary:()=>this.exportSummary()
