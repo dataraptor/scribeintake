@@ -11,6 +11,7 @@ payloads — never a blank 500 (§18).
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,8 @@ from scribeintake.models import DISCLAIMER
 from scribeintake.orchestrator import run_turn
 
 from . import __version__, deps, schemas, serialize
+
+logger = logging.getLogger(__name__)
 
 # A friendly "try again" message for a model/transport failure mid-turn (§18). The patient's
 # message is already persisted before any model call, so their state is preserved.
@@ -63,7 +66,32 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     )
     _register_routes(app)
     _mount_frontend(app)
+    if settings.warm_models_on_startup:
+        _warm_models_async()
     return app
+
+
+def _warm_models_async() -> None:
+    """Pre-load the RAG retriever (torch + the two BGE models) off the request path.
+
+    Runs in a daemon thread so uvicorn boot and ``/health`` stay responsive while the ~5–30s cold
+    load happens in the background. The retriever is process-cached (``get_retriever``), so by the
+    time the patient sends their first message the models are already resident — no first-turn
+    penalty. Any failure degrades exactly as the lazy path does (BM25-only / uncited, §18); the
+    thread just logs and exits, never crashing startup.
+    """
+    import threading
+
+    def _warm() -> None:
+        try:
+            from scribeintake.rag import get_retriever
+
+            get_retriever()
+            logger.info("RAG retriever warmed at startup")
+        except Exception as exc:  # noqa: BLE001 - warmup is best-effort; lazy path still works
+            logger.warning("startup model warmup failed (will lazy-load on first turn): %s", exc)
+
+    threading.Thread(target=_warm, name="rag-warmup", daemon=True).start()
 
 
 # --------------------------------------------------------------------------------- SSE helpers
@@ -144,15 +172,42 @@ def _register_routes(app: FastAPI) -> None:
             return JSONResponse(serialize.turn_response(turn).model_dump(by_alias=True))
 
         def event_stream():
-            conn = deps.open_conn(db_path)
-            try:
-                turn = run_turn(session_id, body.text, conn=conn)
-            except Exception:  # noqa: BLE001 - never drop the stream blankly (§18)
-                conn.close()
+            # The turn is a sequence of synchronous, sequential model calls — so we run it in a
+            # worker thread and relay the orchestrator's progress events to the client as they
+            # happen (``stage`` frames), turning the unavoidable wait into a live view of the
+            # pipeline (gate → reason → tools → reason → reply). The SQLite connection is opened
+            # AND used AND closed inside that one thread (sqlite is check_same_thread); the
+            # generator below only drains a thread-safe queue and never touches the connection.
+            import queue
+            import threading
+
+            events: queue.Queue = queue.Queue()
+            holder: dict = {}
+
+            def worker():
+                conn = deps.open_conn(db_path)
+                try:
+                    holder["turn"] = run_turn(
+                        session_id, body.text, conn=conn, on_event=lambda ev: events.put(ev)
+                    )
+                except Exception:  # noqa: BLE001 - never drop the stream blankly (§18)
+                    holder["error"] = True
+                finally:
+                    conn.close()
+                    events.put(None)  # sentinel: turn finished (success or error)
+
+            threading.Thread(target=worker, name="run-turn", daemon=True).start()
+
+            while True:
+                ev = events.get()
+                if ev is None:
+                    break
+                yield _sse("stage", ev)
+
+            if holder.get("error"):
                 yield _sse("error", {"message": RECONNECT_MSG, "kind": "reconnect"})
                 return
-            conn.close()
-            resp = serialize.turn_response(turn)
+            resp = serialize.turn_response(holder["turn"])
             for chunk in _chunks(resp.content):
                 yield _sse("token", {"text": chunk})
             yield _sse("turn", resp.model_dump(by_alias=True))

@@ -61,9 +61,11 @@ def _recording_agent(*responses) -> tuple[AgentLoop, list]:
     seen: list[TriageBand] = []
     real_run = loop.run_turn
 
-    def recording_run_turn(*, history, user_content, ctx, effort):
+    def recording_run_turn(*, history, user_content, ctx, effort, on_event=None):
         seen.append(ctx.state.triage_floor)
-        return real_run(history=history, user_content=user_content, ctx=ctx, effort=effort)
+        return real_run(
+            history=history, user_content=user_content, ctx=ctx, effort=effort, on_event=on_event
+        )
 
     loop.run_turn = recording_run_turn  # type: ignore[method-assign]
     return loop, seen

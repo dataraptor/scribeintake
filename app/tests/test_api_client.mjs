@@ -238,6 +238,38 @@ test("sendMessage: non-stream JSON fallback still chunks + delivers the turn", a
   assert.equal(turn.level, "CLEAR");
 });
 
+test("sendMessage: stage frames route to onStage, in order, before token/turn", async () => {
+  const frames = [
+    "event: stage\ndata: " + JSON.stringify({ stage: "gate", label: "Screening" }) + "\n\n",
+    "event: stage\ndata: " + JSON.stringify({ stage: "tool", tool: "record_intake", label: "Recording" }) + "\n\n",
+    "event: token\ndata: " + JSON.stringify({ text: "Hi" }) + "\n\n",
+    "event: turn\ndata: " + JSON.stringify({ content: "Hi", level: "CLEAR" }) + "\n\n",
+  ];
+  const api = loadClient({ apiBase: "", fetchImpl: async () => streamResponse(frames) });
+  const stages = [];
+  const tokens = [];
+  await api.sendMessage("s", "hi", {
+    onStage: (s) => stages.push(s),
+    onToken: (t) => tokens.push(t),
+    onTurn: () => {},
+  });
+  assert.deepEqual(stages.map((s) => s.stage), ["gate", "tool"]);
+  assert.equal(stages[1].tool, "record_intake");
+  assert.deepEqual(tokens, ["Hi"]);
+});
+
+test("sendMessage: missing onStage handler is tolerated (stage frames ignored)", async () => {
+  const frames = [
+    "event: stage\ndata: " + JSON.stringify({ stage: "gate", label: "Screening" }) + "\n\n",
+    "event: turn\ndata: " + JSON.stringify({ content: "Hi", level: "CLEAR" }) + "\n\n",
+  ];
+  const api = loadClient({ apiBase: "", fetchImpl: async () => streamResponse(frames) });
+  let turn = null;
+  // no onStage passed — must not throw
+  await api.sendMessage("s", "hi", { onTurn: (x) => (turn = x) });
+  assert.equal(turn.content, "Hi");
+});
+
 test("sendMessage: error frame routes to onError (never a blank failure)", async () => {
   const frames = ["event: error\ndata: " + JSON.stringify({ message: "snag", kind: "reconnect" }) + "\n\n"];
   const api = loadClient({ apiBase: "", fetchImpl: async () => streamResponse(frames) });

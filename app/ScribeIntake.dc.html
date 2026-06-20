@@ -146,10 +146,25 @@
             </sc-for>
 
             <sc-if value="{{ showTyping }}" hint-placeholder-val="{{ true }}">
-              <div style="display:flex;gap:5px;padding:4px 2px 14px">
-                <span style="width:6px;height:6px;border-radius:50%;background:#C7CBD1;animation:dot 1.2s infinite"></span>
-                <span style="width:6px;height:6px;border-radius:50%;background:#C7CBD1;animation:dot 1.2s .18s infinite"></span>
-                <span style="width:6px;height:6px;border-radius:50%;background:#C7CBD1;animation:dot 1.2s .36s infinite"></span>
+              <div style="padding:4px 2px 14px">
+                <sc-if value="{{ showDots }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;gap:5px">
+                    <span style="width:6px;height:6px;border-radius:50%;background:#C7CBD1;animation:dot 1.2s infinite"></span>
+                    <span style="width:6px;height:6px;border-radius:50%;background:#C7CBD1;animation:dot 1.2s .18s infinite"></span>
+                    <span style="width:6px;height:6px;border-radius:50%;background:#C7CBD1;animation:dot 1.2s .36s infinite"></span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ showStages }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11.5px;line-height:1.4;animation:fadeUp .2s ease">
+                    <sc-for list="{{ stages }}" as="g" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <span style="{{ g.iconStyle }}">{{ g.icon }}</span>
+                        <span style="{{ g.labelStyle }}">{{ g.label }}</span>
+                        <sc-if value="{{ g.hasTool }}" hint-placeholder-val="{{ true }}"><span style="color:#C7CBD1">{{ g.tool }}</span></sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
               </div>
             </sc-if>
           </div>
@@ -377,7 +392,7 @@ class Component extends DCLogic {
       screen:'intake', messages:[], slots:{},
       triageFloor:'self_care', floorPinned:false,
       quickReplies:[], sheet:'none', emergency:null, summary:null,
-      halted:false, readyToSummarize:false, typing:false, trace:[], copied:false, sheetIn:false,
+      halted:false, readyToSummarize:false, typing:false, stages:[], trace:[], copied:false, sheetIn:false,
       // data layer — every field below is populated from the API (api-client.js); null until loaded.
       sessionId:null, disclaimer:'', ldDet:null, ldDist:null, traceCost:null, apiError:null,
       evalLabel:'', framing:'',
@@ -421,7 +436,7 @@ class Component extends DCLogic {
     const aid='m'+(this._mid++);
     this.setState(s=>({
       messages:[...s.messages, {id:pid, role:'patient', content:text}],
-      quickReplies:[], readyToSummarize:false, copied:false, typing:true, apiError:null
+      quickReplies:[], readyToSummarize:false, copied:false, typing:true, stages:[], apiError:null
     }));
     const run=async ()=>{
       let sid=this.state.sessionId;
@@ -432,6 +447,7 @@ class Component extends DCLogic {
       const ensureBubble=()=>{ if(started) return; started=true;
         this.setState(s=>({typing:false, messages:[...s.messages, {id:aid, role:'assistant', content:'', model:null, sources:null, sourcesExpanded:false}]})); };
       A.sendMessage(sid, text, {
+        onStage:(ev)=>{ if(started||!ev||!ev.label) return; this.setState(s=> s.typing ? ({stages:[...s.stages, {label:ev.label, tool:ev.tool||null}]}) : s); },
         onToken:(t)=>{ ensureBubble(); assembled+=t; this.updateMessage(aid, m=>({...m, content:assembled})); },
         onTurn:(turn)=>{ ensureBubble(); this.applyTurn(pid, aid, turn); },
         onError:(err)=>{ this.onApiError(err); }
@@ -648,6 +664,21 @@ class Component extends DCLogic {
       showEmpty: isIntake && st.messages.length===0 && !st.halted,
       messages,
       showTyping: st.typing,
+      showStages: st.typing && st.stages.length>0,
+      showDots: st.typing && st.stages.length===0,
+      stages: st.stages.map((g,i)=>{
+        const active = i===st.stages.length-1;
+        return {
+          label: g.label,
+          tool: g.tool || '',
+          hasTool: !!g.tool,
+          icon: active ? '' : '✓',
+          iconStyle: active
+            ? 'width:6px;height:6px;border-radius:50%;background:#C7CBD1;animation:dot 1.2s infinite;display:inline-block;flex:none'
+            : 'color:#1F8A54;font-size:11px;flex:none;width:6px;text-align:center',
+          labelStyle: active ? 'color:#17191E' : 'color:#9398A1'
+        };
+      }),
       filledCount:filled, progressPct, floorPinned:st.floorPinned, floorLabel,
       exampleChips,
       quickReplies: st.quickReplies,

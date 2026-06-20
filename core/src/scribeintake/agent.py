@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import resources
 
@@ -37,6 +38,24 @@ SYSTEM_PROMPT = (
 )
 
 DEFAULT_MAX_TOKENS = 1024
+
+# Patient-facing labels for the live "what the agent is doing" strip (the SSE ``stage`` events).
+# Each routine turn makes ~3 sequential model calls; surfacing the real tool dispatch turns that
+# unavoidable wait into a window onto the architecture (gate → reason → tools → reason → reply).
+# Keyed by the actual tool name so the demo shows the genuine function the model invoked.
+TOOL_STAGE_LABELS = {
+    "record_intake": "Recording what you told me",
+    "retrieve_guideline": "Consulting clinical guidelines",
+    "assess_escalation": "Assessing urgency",
+}
+_THINKING_LABEL = "Thinking…"
+
+# A no-op sink so the loop never has to null-check the callback.
+ProgressFn = Callable[[dict], None]
+
+
+def _noop(_event: dict) -> None:
+    pass
 
 # Safe templated replies (code, not model output) for the failure paths (§17/§18).
 REFUSAL_REPLY = (
@@ -114,16 +133,24 @@ class AgentLoop:
         ctx: ToolContext,
         system: str = SYSTEM_PROMPT,
         effort: str = EFFORT_INTAKE,
+        on_event: ProgressFn | None = None,
     ) -> AgentResult:
         """Run one patient turn. ``history`` is prior messages (OpenAI shape); the volatile
         per-turn reminder is expected to already live inside ``user_content`` (user turn).
+
+        ``on_event`` (optional) receives a small dict per observable step — one ``thinking``
+        event before each model call and one ``tool`` event per tool the model invokes — so a
+        streaming caller can show the patient what the agent is doing while it waits. It is a
+        best-effort UI signal only; it never changes the turn's outcome.
         """
+        emit = on_event or _noop
         messages: list[dict] = [*history, {"role": "user", "content": user_content}]
         tools = self.registry.schemas()
         steps: list[AgentStep] = []
         executions: list[ToolExecution] = []
 
         for _ in range(self.max_steps):
+            emit({"stage": "thinking", "label": _THINKING_LABEL})
             resp, latency = self._complete(system, messages, tools, effort)
             steps.append(
                 AgentStep(
@@ -147,6 +174,13 @@ class AgentLoop:
                 messages.append(resp.raw_message or _assistant_msg(resp))
                 emergency = False
                 for tc in resp.tool_calls:
+                    emit(
+                        {
+                            "stage": "tool",
+                            "tool": tc.name,
+                            "label": TOOL_STAGE_LABELS.get(tc.name, tc.name),
+                        }
+                    )
                     result, latency = self.registry.dispatch(tc.name, tc.arguments, ctx)
                     executions.append(ToolExecution(tc.name, tc.arguments, result, latency))
                     messages.append(

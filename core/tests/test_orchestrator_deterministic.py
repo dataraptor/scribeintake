@@ -62,6 +62,32 @@ def _safety_events(conn, session_id):
     ]
 
 
+# ------------------------------------------------------------- progress events (on_event)
+def test_on_event_emits_gate_then_agent_stages(conn, session):
+    agent = agent_with(
+        _record([("chief_complaint", "sore throat")]),
+        text_response("Since when?"),
+    )
+    events: list[dict] = []
+    run_turn(session, CLEAR_MSG, conn=conn, agent=agent, on_event=events.append)
+
+    stages = [e["stage"] for e in events]
+    # the code-only safety gate is reported first (before any model call), then the agent loop
+    assert stages[0] == "gate"
+    assert "thinking" in stages and "tool" in stages
+    # every event carries a patient-facing label
+    assert all(e.get("label") for e in events)
+    # the tool stage names the real tool the model invoked
+    tool_ev = next(e for e in events if e["stage"] == "tool")
+    assert tool_ev["tool"] == "record_intake"
+
+
+def test_on_event_is_optional(conn, session):
+    # omitting on_event must not change behaviour (no crash, normal turn)
+    turn = run_turn(session, CLEAR_MSG, conn=conn, agent=seed_then_ask("chief_complaint", "x"))
+    assert turn.status in ("active", "completed")
+
+
 # --------------------------------------------------------------------- URGENT path
 def test_urgent_gate_pins_floor_and_continues(conn, session):
     agent = agent_with(

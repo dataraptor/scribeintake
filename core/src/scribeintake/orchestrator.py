@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -110,6 +111,7 @@ def run_turn(
     retriever: object | None = None,
     generated_at: str | None = None,
     effort: str = EFFORT_INTAKE,
+    on_event: Callable[[dict], None] | None = None,
 ) -> AssistantTurn:
     """Run one patient turn end-to-end (steps 1–7, §6).
 
@@ -124,7 +126,14 @@ def run_turn(
     never loads an index. A missing/unbuilt index degrades gracefully to ``uncited``.
     ``generated_at`` is the ISO timestamp stamped into the SOAP — passed in so eval/cached paths
     stay reproducible (§3.4).
+
+    ``on_event`` (optional) receives a small dict per observable phase — the safety gate, each
+    agent model call / tool dispatch, and the terminal summary build — so a streaming caller can
+    show the patient what is happening during the (necessarily sequential) model calls. It is a
+    best-effort UI signal: it never alters the deterministic turn outcome.
     """
+    emit = on_event or (lambda _event: None)
+
     # --- load state (stateless-per-turn) -----------------------------------------
     state = db.load_intake_state(conn, session_id)
 
@@ -133,6 +142,7 @@ def run_turn(
     turn = db.count_user_messages(conn, session_id)
 
     # --- steps 2-3: extract + gate (code, NO LLM) --------------------------------
+    emit({"stage": "gate", "label": "Screening for urgent red-flag symptoms"})
     gate = run_gate(
         user_msg,
         prior_signals=state.signals,
@@ -190,7 +200,9 @@ def run_turn(
         {"type": "text", "text": reminder},
     ]
 
-    result = agent.run_turn(history=history, user_content=user_content, ctx=ctx, effort=effort)
+    result = agent.run_turn(
+        history=history, user_content=user_content, ctx=ctx, effort=effort, on_event=emit
+    )
     traces = _persist_traces(conn, session_id, turn, result)
     model_used = _last_model(result)
 
@@ -238,6 +250,7 @@ def run_turn(
 
     if is_complete(state.slots, turn):
         # --- finalization: build_summary -> suggest_triage -> persist (§3.6) ------
+        emit({"stage": "finalize", "label": "Preparing your clinical summary"})
         soap_dict, triage_band, fin_traces = _finalize(
             conn,
             state,

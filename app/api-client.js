@@ -69,6 +69,7 @@
     const onToken = (handlers && handlers.onToken) || function () {};
     const onTurn = (handlers && handlers.onTurn) || function () {};
     const onError = (handlers && handlers.onError) || function () {};
+    const onStage = (handlers && handlers.onStage) || function () {};
     let res;
     try {
       res = await fetch(url("/session/" + encodeURIComponent(sessionId) + "/message"), {
@@ -103,7 +104,7 @@
       onTurn(j);
       return;
     }
-    await readSse(res.body, { onToken, onTurn, onError });
+    await readSse(res.body, { onToken, onTurn, onError, onStage });
   }
 
   async function readSse(body, h) {
@@ -144,6 +145,7 @@
     }
     if (event === "token") h.onToken(data.text || "");
     else if (event === "turn") h.onTurn(data);
+    else if (event === "stage") (h.onStage || function () {})(data);
     else if (event === "error") h.onError({ message: data.message || reconnectMsg(), kind: data.kind });
   }
 

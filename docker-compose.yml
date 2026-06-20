@@ -22,6 +22,14 @@ services:
     environment:
       # Default CORS open for local testing; tighten for any shared deployment.
       - API_CORS_ORIGINS=*
+      # Warm the RAG models (torch + the two BGE models) at startup, off the request path, so the
+      # first patient turn isn't penalised by the cold load. Set to 0 to revert to lazy first-turn
+      # loading (e.g. to minimise idle memory on a rarely-hit instance).
+      - WARM_MODELS_ON_STARTUP=1
+      # Reasoning effort for routine intake turns (the latency lever — ~3 model calls/turn, effort
+      # paid on each). "low" is fast question-asking; bump to medium/high to trade speed for depth.
+      # The terminal clinical summary always runs at high regardless of this.
+      - INTAKE_EFFORT=low
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=4).status==200 else 1)"]

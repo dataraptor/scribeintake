@@ -29,7 +29,7 @@ def parse_sse(text: str) -> list[tuple[str, dict]]:
 
 def test_stream_emits_tokens_then_terminal_turn(client, session_id, monkeypatch):
     turn = make_clear_turn(session_id, assistant_text="Can you tell me when this started?")
-    monkeypatch.setattr("api.main.run_turn", lambda sid, text, *, conn: turn)
+    monkeypatch.setattr("api.main.run_turn", lambda sid, text, *, conn, on_event=None: turn)
 
     url = f"/session/{session_id}/message"
     resp = client.post(url, json={"text": "my head hurts"}, headers=SSE)
@@ -54,7 +54,7 @@ def test_stream_emits_tokens_then_terminal_turn(client, session_id, monkeypatch)
 
 def test_stream_emergency_turn_carries_sheet(client, session_id, monkeypatch):
     turn = make_gate_emergency_turn(session_id)
-    monkeypatch.setattr("api.main.run_turn", lambda sid, text, *, conn: turn)
+    monkeypatch.setattr("api.main.run_turn", lambda sid, text, *, conn, on_event=None: turn)
 
     resp = client.post(f"/session/{session_id}/message", json={"text": "chest pain"}, headers=SSE)
     events = parse_sse(resp.text)
@@ -64,7 +64,7 @@ def test_stream_emergency_turn_carries_sheet(client, session_id, monkeypatch):
 
 
 def test_stream_error_emits_friendly_error_frame(client, session_id, monkeypatch):
-    def boom(sid, text, *, conn):
+    def boom(sid, text, *, conn, on_event=None):
         raise RuntimeError("simulated mid-stream failure")
 
     monkeypatch.setattr("api.main.run_turn", boom)
@@ -83,6 +83,35 @@ def test_stream_error_emits_friendly_error_frame(client, session_id, monkeypatch
 def test_default_accept_streams(client, session_id, monkeypatch):
     """No explicit Accept (TestClient sends */*) defaults to the SSE stream."""
     turn = make_clear_turn(session_id)
-    monkeypatch.setattr("api.main.run_turn", lambda sid, text, *, conn: turn)
+    monkeypatch.setattr("api.main.run_turn", lambda sid, text, *, conn, on_event=None: turn)
     resp = client.post(f"/session/{session_id}/message", json={"text": "hi"})
     assert resp.headers["content-type"].startswith("text/event-stream")
+
+
+def test_stream_relays_progress_stage_frames_before_tokens(client, session_id, monkeypatch):
+    """The orchestrator's ``on_event`` progress callbacks surface as ``stage`` frames, in order,
+    before the token/turn frames — this is the live "what the agent is doing" view."""
+    turn = make_clear_turn(session_id, assistant_text="When did it start?")
+
+    def fake_run(sid, text, *, conn, on_event=None):
+        # Emit the same shape the real orchestrator/agent emit.
+        on_event({"stage": "gate", "label": "Screening for urgent red-flag symptoms"})
+        on_event({"stage": "thinking", "label": "Thinking…"})
+        on_event({"stage": "tool", "tool": "record_intake", "label": "Recording what you told me"})
+        return turn
+
+    monkeypatch.setattr("api.main.run_turn", fake_run)
+
+    resp = client.post(f"/session/{session_id}/message", json={"text": "my head hurts"}, headers=SSE)
+    assert resp.status_code == 200
+    events = parse_sse(resp.text)
+    kinds = [e for e, _ in events]
+
+    # all three stage frames arrive, in order, ahead of the first token and the terminal turn
+    assert kinds.count("stage") == 3
+    first_token = kinds.index("token")
+    assert all(i < first_token for i, k in enumerate(kinds) if k == "stage")
+    stages = [d for e, d in events if e == "stage"]
+    assert [s["stage"] for s in stages] == ["gate", "thinking", "tool"]
+    assert stages[2]["tool"] == "record_intake"
+    assert kinds[-1] == "turn"

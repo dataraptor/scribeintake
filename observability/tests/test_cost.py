@@ -84,7 +84,7 @@ def test_export_session_jsonl_one_line_per_row(conn, tmp_path):
 class _FakeAgent:
     """Returns a pre-built result whose model call carries cache-read tokens."""
 
-    def run_turn(self, *, history, user_content, ctx, effort="medium"):
+    def run_turn(self, *, history, user_content, ctx, effort="medium", on_event=None):
         return AgentResult(
             assistant_text="Could you tell me a little more about that?",
             steps=[

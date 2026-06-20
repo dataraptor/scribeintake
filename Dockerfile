@@ -25,7 +25,14 @@ ENV PYTHONUNBUFFERED=1 \
     # Keep the model cache in-image at a stable path so runtime retrieval is offline.
     HF_HOME=/app/.hf_cache \
     # The wired provider; override at runtime via env if using the Anthropic/Claude path.
-    CHAT_LLM_MODEL=gpt-5.5
+    CHAT_LLM_MODEL=gpt-5.5 \
+    # Warm the RAG models at startup (off the request path) so the first patient turn isn't
+    # penalised by the cold torch/BGE load — the weights are already baked in below.
+    WARM_MODELS_ON_STARTUP=1 \
+    # Reasoning effort for routine intake turns. Each turn makes ~3 sequential model calls and
+    # gpt-5.5 pays reasoning latency on every one; "low" cuts that for question-asking without
+    # touching the high-effort clinical summary. Override (medium/high) to trade speed for depth.
+    INTAKE_EFFORT=low
 
 WORKDIR /app
 

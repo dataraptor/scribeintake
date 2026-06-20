@@ -7,6 +7,7 @@ tier and the per-commit CI gate run with no secrets.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,9 +28,12 @@ MODEL_JUDGE = "claude-opus-4-8"
 DEFAULT_CHAT_MODEL = "gpt-5.5"
 
 # Agent reasoning-effort routes (maps to OpenAI ``reasoning_effort`` / the spec's
-# ``output_config.effort``). Routine intake turns use ``medium``; the terminal SOAP summary is
-# quality-critical clinical reasoning (``high``); triage refinement is ``medium``.
-EFFORT_INTAKE = "medium"
+# ``output_config.effort``). Routine intake turns ask "which slot next?" — not deep reasoning —
+# so the intake route is env-tunable via INTAKE_EFFORT (default ``medium`` to keep eval/CI
+# reproducible; the container ships ``low`` for latency, since each turn makes ~3 sequential
+# model calls and effort is paid on every one). The terminal SOAP summary stays ``high``
+# (quality-critical clinical reasoning); triage refinement stays ``medium``.
+EFFORT_INTAKE = os.getenv("INTAKE_EFFORT", "medium")
 EFFORT_SUMMARY = "high"
 EFFORT_TRIAGE = "medium"
 
@@ -103,6 +107,12 @@ class Settings(BaseSettings):
     # ``pricing.no_cache_cost_usd`` / the Split 09 session log), which is more rigorous than
     # re-running. Env: PROMPT_CACHE_ENABLED.
     prompt_cache_enabled: bool = True
+
+    # Warm the RAG retriever (torch + the two BGE models) at server startup instead of on the
+    # first patient message. Off by default so unit tests and the deterministic eval tier — which
+    # build the app but never touch the live index — never pay the model load. The container sets
+    # WARM_MODELS_ON_STARTUP=1 so the first real turn isn't penalised by the cold load (§18).
+    warm_models_on_startup: bool = False
 
     @property
     def ACTIVE_INTAKE_MODEL(self) -> str:

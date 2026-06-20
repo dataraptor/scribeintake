@@ -43,6 +43,36 @@ def test_tool_then_question_dispatches_and_records_slots():
     assert len(result.tool_executions) == 1
 
 
+def test_on_event_reports_thinking_and_tool_stages_in_order():
+    record = tool_response(
+        [("record_intake", {"updates": [{"slot": "chief_complaint", "value": "sore throat"}]})]
+    )
+    client = FakeLLMClient([record, text_response("How many days?")])
+    events: list[dict] = []
+    loop = AgentLoop(client, default_registry())
+    loop.run_turn(
+        history=[], user_content="I have a sore throat.", ctx=_ctx(), on_event=events.append
+    )
+
+    stages = [(e["stage"], e.get("tool")) for e in events]
+    # one thinking per model call (2), one tool event for the dispatched record_intake, in order
+    assert stages == [
+        ("thinking", None),
+        ("tool", "record_intake"),
+        ("thinking", None),
+    ]
+    # the tool event carries a patient-facing label
+    tool_ev = next(e for e in events if e["stage"] == "tool")
+    assert tool_ev["label"] == "Recording what you told me"
+
+
+def test_on_event_is_optional_and_defaults_to_noop():
+    client = FakeLLMClient([text_response("What's bothering you?")])
+    # no on_event passed → must not raise
+    result = _run(client, _ctx())
+    assert result.assistant_text == "What's bothering you?"
+
+
 def test_text_only_first_response_is_the_question():
     client = FakeLLMClient([text_response("What's bothering you today?")])
     result = _run(client, _ctx())
