@@ -93,6 +93,17 @@ regression; Group 2 needs a key and is **tracked, never gated**.
 Verified copy-paste-true on Windows (PowerShell / `tasks.ps1`) and POSIX (`make`). The deterministic
 parts need **no API key**.
 
+**Fastest path — Docker (recommended for testing; citations work out of the box):**
+
+```bash
+docker compose up --build      # builds the RAG index + warms the local models into the image
+# open http://localhost:8000   — full UI + API; live turns use the .env LLM key, the gate is key-free
+```
+
+The container builds the guideline index at image-build time and bundles the local embedder +
+reranker, so **cited SOAP observations work offline** — no torch setup on the host. See
+[`DEPLOY.md`](DEPLOY.md) for details. Native (non-Docker) setup below:
+
 ```powershell
 # 1. Install the engine + dev tools (no key needed)
 make install                  # POSIX  ·  Windows:  pip install -e "./core[dev]"

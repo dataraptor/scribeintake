@@ -3,6 +3,28 @@
 All notable changes to ScribeIntake. This project follows a split-based build (14 self-contained
 shippable units); the v1.0.0 entry summarizes the whole arc.
 
+## [1.0.1] — 2026-06-20
+
+Containerized deployment for a smooth, citation-enabled local test experience. No engine or
+safety behaviour changed.
+
+### Added
+- **`Dockerfile` + `docker-compose.yml` + `.dockerignore`.** One-command run
+  (`docker compose up --build` → `http://localhost:8000`) serving the API, the static UI, and
+  the Proof artifacts from a single process.
+- **RAG index is built at image-build time** and the local embedder (`bge-small-en-v1.5`) +
+  cross-encoder reranker (`bge-reranker-base`) are warmed into the image, so **cited SOAP
+  observations work offline, out of the box** in the container. This is the recommended test
+  surface: torch/sentence-transformers install cleanly on the Linux base, avoiding the
+  Windows-host torch load failure that otherwise degrades retrieval to *uncited*.
+- `HEALTHCHECK` on `/health`; CPU-only torch wheel to keep the image lean.
+
+### Notes
+- Secrets are **never** baked into the image — LLM credentials are read at runtime from `.env`
+  (compose `env_file`); `.dockerignore` excludes `.env`, `data/`, and caches.
+- `DEPLOY.md` updated with the containerized-run section (replaces the prior "Docker
+  intentionally not shipped" note).
+
 ## [1.0.0] — 2026-06-20
 
 First complete release: an agentic pre-visit clinical intake chat with a **deterministic safety

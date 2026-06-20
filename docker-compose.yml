@@ -1,0 +1,31 @@
+# ScribeIntake — local single-instance deployment.
+#
+#   docker compose up --build        # build the image (bakes the RAG index) and run
+#   open http://localhost:8000       # the full UI + API
+#
+# LLM credentials are read from .env at RUNTIME (env_file below) — never baked into the image.
+# Without a key the app still runs: the deterministic safety gate, the UI, and the committed
+# Proof artifacts all work key-free; only live intake turns / summaries need the LLM.
+services:
+  scribeintake:
+    build: .
+    image: scribeintake:1.0.1
+    container_name: scribeintake
+    ports:
+      # Host port defaults to 8000 (matches the docs); override if it's taken:
+      #   SCRIBE_PORT=8200 docker compose up -d
+      - "${SCRIBE_PORT:-8000}:8000"
+    # LLM credentials (Azure OpenAI GPT-5.5 by default; or ANTHROPIC_API_KEY for the Claude path).
+    # Missing .env is tolerated — comment this out to run fully key-free.
+    env_file:
+      - .env
+    environment:
+      # Default CORS open for local testing; tighten for any shared deployment.
+      - API_CORS_ORIGINS=*
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health',timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

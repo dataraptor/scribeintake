@@ -1,0 +1,32 @@
+# Secrets — NEVER bake into the image (passed at runtime via compose env_file/-e). See DEPLOY.md §2.
+.env
+.envrc
+
+# VCS / CI
+.git
+.github
+
+# Runtime data, built indexes, model caches — the image rebuilds the RAG index at build time,
+# so the host's (possibly stale, possibly torch-less) data/ must not leak in.
+data/
+**/.rag_index/
+*.db
+
+# Python caches / build artifacts
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+build/
+dist/
+
+# Local virtualenvs
+.venv/
+venv/
+env/
+
+# Scratch / planning (not needed in the image)
+tmp/

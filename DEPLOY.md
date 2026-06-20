@@ -30,11 +30,40 @@ make demo                          # Windows:  .\tasks.ps1 demo
 Endpoints: `GET /health`, `POST /session`, `POST /session/{id}/message` (SSE), `GET /session/{id}/summary`,
 `GET /session/{id}/trace`, plus the static UI at `/` and `/proof/{leaderboard,cost_report}.json`.
 
-### Optional containerization
-A `Dockerfile` is intentionally **not** shipped for v1 (the one-command uvicorn run is the demo
-surface). To containerize: base `python:3.11-slim`, `pip install -e "./core[dev]" fastapi uvicorn`,
-copy the repo, `CMD ["python","-m","uvicorn","api.main:app","--host","0.0.0.0","--port","8000"]`,
-and mount `.env` / `data/` as a secret + volume (never bake them into the image).
+### Containerized run (recommended test surface)
+
+A `Dockerfile` + `docker-compose.yml` ship with the repo. **Docker is the recommended way to
+test the full stack with citations**: `torch`/`sentence-transformers` install cleanly on the
+Linux base, so the image **builds the RAG index at image-build time** and warms the local
+embedder (`bge-small-en-v1.5`) + cross-encoder reranker (`bge-reranker-base`) into the image —
+retrieval (and therefore cited SOAP observations) works **offline, out of the box**. (On a
+Windows host where torch fails to load, retrieval degrades gracefully to *uncited*; the
+container avoids that entirely.)
+
+```bash
+# build the image (bakes the RAG index — first build pulls CPU torch + the two models) and run
+docker compose up --build
+
+# then open http://localhost:8000
+```
+
+- **Secrets are never baked in.** The LLM credentials are read at **runtime** from `.env`
+  (compose `env_file`), not copied into the image (`.dockerignore` excludes `.env`, `data/`,
+  caches). Comment out the `env_file:` line to run fully key-free — the deterministic safety
+  gate, the UI, and the committed Proof artifacts all work with no key; only live intake turns
+  and the terminal SOAP/triage call need the model.
+- **One process, one port.** The container serves the API, the static UI at `/`, and
+  `/proof/{leaderboard,cost_report}.json`. A `HEALTHCHECK` polls `/health`.
+- **Persistence.** The SQLite DB + RAG index live inside the container (ephemeral — fine for
+  testing). For a durable store, mount a volume at `/app/data` and re-run `python -m
+  scribeintake.rag.ingest` inside it, or bind-mount a pre-built `data/.rag_index`.
+
+Direct `docker` (no compose):
+
+```bash
+docker build -t scribeintake:1.0.0 .
+docker run --rm -p 8000:8000 --env-file .env scribeintake:1.0.0
+```
 
 ---
 

@@ -7,4 +7,4 @@ live in ``core``; the API only exposes them over HTTP/SSE. Each request is state
 session from SQLite, run, save) — there is no in-memory session map.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
