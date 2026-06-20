@@ -1,10 +1,15 @@
 # POSIX task runner. Windows/PowerShell equivalents live in tasks.ps1.
 # Canonical commands use `python -m ...` so they work without `make`.
 
-.PHONY: install install-rag lint fmt test test-live ingest eval eval-ci cost-report cache-check
+.PHONY: install install-api install-rag lint fmt test test-live ingest eval eval-ci cost-report cache-check run-api
 
 install:
 	pip install -e "./core[dev]"
+
+# Adds the API web deps (FastAPI + uvicorn + httpx for the TestClient). `api/` is import-only
+# (resolved via the repo-root pythonpath), so only the deps are installed, not the package.
+install-api:
+	pip install -e "./core[dev]" "fastapi>=0.110,<1" "uvicorn>=0.27,<1" "httpx>=0.27,<1"
 
 # Adds the local RAG models (embedder + cross-encoder reranker → torch) for live retrieval.
 install-rag:
@@ -42,3 +47,9 @@ cost-report:
 # Live prompt-cache verification (needs LLM credentials): cold-vs-warm cache_read proof.
 cache-check:
 	python -c "from observability.cache_check import run_cache_check, format_result; print(format_result(run_cache_check()))"
+
+# Run the FastAPI service (Split 10). Needs the API web deps (`make install-api`) + LLM creds
+# in .env for live turns. The deterministic safety gate runs in core, upstream, as always.
+# `python -m uvicorn` works whether or not the uvicorn console script is on PATH.
+run-api:
+	python -m uvicorn api.main:app --reload --port 8000

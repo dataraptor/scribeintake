@@ -221,6 +221,26 @@ def finalize_session(
     conn.commit()
 
 
+def get_summary(conn: sqlite3.Connection, session_id: str) -> sqlite3.Row | None:
+    """Return the latest persisted ``summaries`` row for a session (or ``None``).
+
+    A session with no row is the honest "no summary" case (e.g. an emergency that halted
+    before finalization); the API surfaces it as a 404 with a reason, never a fabricated SOAP.
+    """
+    return conn.execute(
+        "SELECT * FROM summaries WHERE session_id = ? ORDER BY id DESC LIMIT 1",
+        (session_id,),
+    ).fetchone()
+
+
+def get_tool_calls(conn: sqlite3.Connection, session_id: str) -> list[sqlite3.Row]:
+    """Return a session's ``tool_calls`` audit rows in order (the trace, oldest first)."""
+    return conn.execute(
+        "SELECT * FROM tool_calls WHERE session_id = ? ORDER BY id ASC",
+        (session_id,),
+    ).fetchall()
+
+
 # --------------------------------------------------------------- observability
 def log_tool_call(conn: sqlite3.Connection, trace: ToolCallTrace) -> int:
     """Insert one ``tool_calls`` audit row; returns its id."""

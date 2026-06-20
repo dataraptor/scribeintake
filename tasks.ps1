@@ -2,12 +2,14 @@
 # Usage: .\tasks.ps1 <task>   e.g.  .\tasks.ps1 test
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("install", "install-rag", "lint", "fmt", "test", "test-live", "ingest", "eval", "eval-ci", "cost-report", "cache-check")]
+    [ValidateSet("install", "install-api", "install-rag", "lint", "fmt", "test", "test-live", "ingest", "eval", "eval-ci", "cost-report", "cache-check", "run-api")]
     [string]$Task = "test"
 )
 
 switch ($Task) {
     "install"     { pip install -e "./core[dev]" }
+    # Adds the API web deps (FastAPI + uvicorn + httpx for the TestClient). api/ is import-only.
+    "install-api" { pip install -e "./core[dev]" "fastapi>=0.110,<1" "uvicorn>=0.27,<1" "httpx>=0.27,<1" }
     # Adds the local RAG models (embedder + cross-encoder reranker -> torch) for live retrieval.
     "install-rag" { pip install -e "./core[dev,rag]" }
     "lint"        { ruff check }
@@ -24,4 +26,6 @@ switch ($Task) {
     "cost-report" { python -m observability }
     # Live prompt-cache verification (needs LLM credentials): cold-vs-warm cache_read proof.
     "cache-check" { python -c "from observability.cache_check import run_cache_check, format_result; print(format_result(run_cache_check()))" }
+    # Run the FastAPI service (Split 10). Needs the API web deps (install-api) + LLM creds in .env.
+    "run-api"     { python -m uvicorn api.main:app --reload --port 8000 }
 }

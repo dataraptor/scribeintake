@@ -1,0 +1,24 @@
+# api module config (Split 10).
+#
+# `api/` is import-only (like `eval/` and `observability/`): it resolves via the repo-root
+# `pythonpath = ["."]` (root pyproject.toml), so `import api.main` / `from api.serialize import ...`
+# work without a build step, and `uvicorn api.main:app` resolves when run from the repo root.
+# This file therefore carries no `[build-system]`/`[project]`; it documents the module's
+# runtime/test dependencies and registers the test markers.
+#
+# Runtime deps (NOT provided by `core[dev]` — install alongside the core editable install):
+#   - scribeintake (core)        — the orchestrator + models the adapter serialises
+#   - fastapi   >=0.110,<1        — the ASGI app + routing (installed & verified: 0.135.3)
+#   - uvicorn   >=0.27,<1         — the ASGI server for `make run-api` (installed: 0.44.0)
+#   SSE is served via FastAPI's built-in StreamingResponse — no `sse-starlette` dependency.
+# Test deps:
+#   - httpx     >=0.27,<1         — required by Starlette's TestClient (installed: 0.28.1)
+#   - pytest, ruff               — already provided by `core[dev]`
+#
+# Install locally:   pip install -e "./core[dev]" "fastapi>=0.110,<1" "uvicorn>=0.27,<1" "httpx>=0.27,<1"
+# Run the server:    uvicorn api.main:app --port 8000     (or `make run-api`)
+
+[tool.pytest.ini_options]
+markers = [
+    "live: tests that call a live LLM API or load ML models (needs LLM credentials, e.g. AZURE_OPENAI_API_KEY / ANTHROPIC_API_KEY)",
+]
