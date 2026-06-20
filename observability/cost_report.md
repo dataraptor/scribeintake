@@ -1,4 +1,4 @@
-# ScribeIntake — Cost & Observability Report
+# ScribeIntake: Cost & Observability Report
 
 > $0.012 · cache 38% saved
 
@@ -31,7 +31,7 @@ Cache-read share of prompt tokens: **65%** (6420 tokens served from cache).
 | Intake per-turn | 3 | 1700 | 2100 | p50<3000 / p95<6000 |
 | Summary call | 1 | 2300 | 2300 | <8000 |
 
-_First summary call (4200 ms) excluded from the percentiles — one-time schema compile (§7), not a regression._
+_First summary call (4200 ms) excluded from the percentiles (one-time schema compile, not a regression)._
 
 All measured latencies are within the §18 targets. ✅
 
@@ -48,4 +48,4 @@ All measured latencies are within the §18 targets. ✅
 ## Notes
 
 - No-cache baseline = observed cached tokens repriced at full input price (pricing.no_cache_cost_usd); the wired GPT-5.5 prefix cache is automatic, so this exact counterfactual is more rigorous than re-running.
-- Synthetic demonstration of the cache-aware pipeline (key-free, byte-reproducible). On the wired Azure GPT-5.5 deployment, prompt caching is verified LIVE on the terminal build_summary call (cache_read 0→1280 tok on warm repeats — see observability/cache_check.py); the agent loop's prefix does not surface cache hits on this deployment. Run `python -m observability` over a live DB for real per-session numbers.
+- Synthetic demonstration of the cache-aware pipeline (key-free, byte-reproducible). On the wired Azure GPT-5.5 deployment, prompt caching is verified LIVE on the terminal build_summary call (cache_read 0→1280 tok on warm repeats, see observability/cache_check.py); the agent loop's prefix does not surface cache hits on this deployment. Run `python -m observability` over a live DB for real per-session numbers.

@@ -1,6 +1,6 @@
 # eval
 
-The evaluation harness — measures how well the engine itself performs.
+The evaluation harness: measures how well the engine itself performs.
 
 This is offline, development-time work, separate from the shipped product. It runs the
 engine against labeled datasets and reports quality metrics, so the system's accuracy

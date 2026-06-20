@@ -5,7 +5,7 @@
     {
       "name": "deterministic_suite",
       "status": "PASS",
-      "detail": "632 passed, 23 deselected in 12.35s",
+      "detail": "637 passed, 23 deselected in 12.35s",
       "gated": true,
       "proves": [
         "all unit/integration tests"
@@ -91,7 +91,7 @@
     {
       "name": "live_model_e2e",
       "status": "SKIP",
-      "detail": "no API key (or --deterministic-only) \u2014 live model row skipped",
+      "detail": "no API key (or --deterministic-only); live model row skipped",
       "gated": false,
       "proves": [
         "live model in the loop"
@@ -100,7 +100,7 @@
     {
       "name": "perf",
       "status": "INFO",
-      "detail": "no fresh traces \u2014 recorded Split-09 live: intake p50=2290ms / p95=4715ms (both inside \u00a718 3000/6000ms); re-measure with a keyed run",
+      "detail": "no fresh traces; recorded live: intake p50=2290ms / p95=4715ms (both inside \u00a718 3000/6000ms); re-measure with a keyed run",
       "gated": false,
       "proves": [
         "\u00a718 p50<3s",

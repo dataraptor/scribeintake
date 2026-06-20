@@ -134,7 +134,7 @@
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "LLM-judge metric — run the full tier with a key (eval.judge)"
+      "note": "LLM-judge metric; run the full tier with a key (eval.judge)"
     },
     {
       "key": "no_diagnosis",
@@ -147,7 +147,7 @@
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "LLM-judge metric — run the full tier with a key (eval.judge)"
+      "note": "LLM-judge metric; run the full tier with a key (eval.judge)"
     },
     {
       "key": "no_coaching_after_escalation",
@@ -160,7 +160,7 @@
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "LLM-judge metric — run the full tier with a key (eval.judge)"
+      "note": "LLM-judge metric; run the full tier with a key (eval.judge)"
     },
     {
       "key": "ctx_precision",
@@ -173,7 +173,7 @@
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)"
+      "note": "RAGAS-style retrieval metric; run the full tier (eval.retrieval_eval)"
     },
     {
       "key": "ctx_recall",
@@ -186,7 +186,7 @@
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)"
+      "note": "RAGAS-style retrieval metric; run the full tier (eval.retrieval_eval)"
     },
     {
       "key": "ragas_faithfulness",
@@ -199,7 +199,7 @@
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)"
+      "note": "RAGAS-style retrieval metric; run the full tier (eval.retrieval_eval)"
     },
     {
       "key": "answer_relevancy",
@@ -212,7 +212,7 @@
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)"
+      "note": "RAGAS-style retrieval metric; run the full tier (eval.retrieval_eval)"
     }
   ],
   "ldDet": [

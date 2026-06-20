@@ -167,13 +167,13 @@ def render_markdown(r: CostReport) -> str:
     s = r.savings
     lat = r.latency
     lines = [
-        "# ScribeIntake — Cost & Observability Report",
+        "# ScribeIntake: Cost & Observability Report",
         "",
         f"> {r.trace_cost_label}",
         "",
         f"- **Generated:** {r.generated_at}",
         f"- **Source:** `{r.source}`"
-        + (f" · model `{r.models.get('intake', '—')}`" if r.models else ""),
+        + (f" · model `{r.models.get('intake', 'n/a')}`" if r.models else ""),
         f"- **Model calls:** {r.cost.n_model_calls} · **total trace rows:** {r.cost.n_calls}",
         "",
         "## Cost (cache-aware, spec §16)",
@@ -215,7 +215,7 @@ def render_markdown(r: CostReport) -> str:
     if lat.first_summary_ms is not None:
         lines.append(
             f"\n_First summary call ({lat.first_summary_ms:.0f} ms) excluded from the percentiles "
-            "— one-time schema compile (§7), not a regression._"
+            "(one-time schema compile, not a regression)._"
         )
     if lat.breaches:
         lines.append("")

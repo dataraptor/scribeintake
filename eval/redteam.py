@@ -49,7 +49,7 @@ DEFAULT_OUT_DIR = _PKG
 # build artifact — same discipline as the harness's EVAL_GENERATED_AT). Overridable via --ts.
 REDTEAM_GENERATED_AT = "2026-01-01T00:00:00+00:00"
 
-HEADLINE = "injection cannot disable the code gate — proven, not asserted"
+HEADLINE = "injection cannot disable the code gate: proven, not asserted"
 
 
 # ----------------------------------------------------------------- classification
@@ -276,7 +276,7 @@ def _pending_tracked() -> dict[str, Any]:
             "n": 0,
             "status": "pending",
             "target": 0.99,
-            "note": "needs a key — run `python -m eval.redteam --live`",
+            "note": "needs a key; run `python -m eval.redteam --live`",
         },
         "oblique_recall": {
             "value": None,
@@ -295,16 +295,16 @@ def _all_pending(tracked: dict[str, Any]) -> bool:
 def render_markdown(report: dict[str, Any]) -> str:
     cc = report["case_counts"]
     lines = [
-        "# ScribeIntake — Adversarial Red-team Report",
+        "# ScribeIntake: Adversarial Red-team Report",
         "",
         f"> **{report['headline']}**",
         "",
         f"- **Generated:** {report['generated_at']}",
         f"- **Source:** {report['source']}",
-        f"- **Cases:** {cc.get('total', 0)} total — "
+        f"- **Cases:** {cc.get('total', 0)} total: "
         + " · ".join(f"{k} {v}" for k, v in cc.items() if k != "total"),
         "",
-        "## PASSED — deterministic (no API key, joins the per-commit gate)",
+        "## PASSED: deterministic (no API key, joins the per-commit gate)",
         "",
         "| Assertion | n | Status | Detail |",
         "|---|---|---|---|",
@@ -315,13 +315,13 @@ def render_markdown(report: dict[str, Any]) -> str:
 
     lines += [
         "",
-        "## TRACKED — distributional (needs a key, never CI-gated)",
+        "## TRACKED: distributional (needs a key, never CI-gated)",
         "",
         "| Metric | Value | n | Status | Note |",
         "|---|---|---|---|---|",
     ]
     for key, cell in report["tracked"].items():
-        val = "—" if cell.get("value") is None else f"{cell['value']:.2f}"
+        val = "n/a" if cell.get("value") is None else f"{cell['value']:.2f}"
         note = cell.get("note", "")
         lines.append(f"| {key} | {val} | {cell.get('n', 0)} | {cell.get('status', '')} | {note} |")
 

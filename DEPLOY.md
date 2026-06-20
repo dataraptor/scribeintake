@@ -1,25 +1,25 @@
 # Deploy & HIPAA-boundary posture
 
-> **Educational demo on synthetic data only — not a diagnostic, triage, or crisis service.**
+> **Educational demo on synthetic data only. Not a diagnostic, triage, or crisis service.**
 > No real PHI anywhere. Adult patients, US-English (988/911). See [`docs/compliance.md`](docs/compliance.md).
 
-This document covers the **single-instance run** (the demo) and the **production posture** — the
-property that makes ScribeIntake a drop-in for a HIPAA boundary: *everything is local except the
-LLM call.*
+This document covers the **single-instance run** (the demo) and the **production posture**, the
+property that makes ScribeIntake a drop-in for a HIPAA boundary: *everything is local except the LLM
+call.*
 
 ---
 
 ## 1. Single-instance run (the demo)
 
-The whole stack — the FastAPI service **and** the static UI — runs from one process. The API mounts
-`app/` at `/` and serves the committed Proof artifacts at `/proof/*` (Split 11).
+The whole stack, the FastAPI service **and** the static UI, runs from one process. The API mounts
+`app/` at `/` and serves the committed Proof artifacts at `/proof/*`.
 
 ```bash
 # 1. install core + the API web deps (api/ is import-only, resolved via the repo-root pythonpath)
 pip install -e "./core[dev]" "fastapi>=0.110,<1" "uvicorn>=0.27,<1" "httpx>=0.27,<1"
 #    or:  make install-api        (Windows:  .\tasks.ps1 install-api)
 
-# 2. (optional, for live turns) put LLM credentials in .env — see §2 below.
+# 2. (optional, for live turns) put LLM credentials in .env (see §2 below).
 #    The deterministic safety gate runs with NO key; emergencies/injections short-circuit key-free.
 
 # 3. boot the one process and open http://localhost:8000
@@ -32,29 +32,28 @@ Endpoints: `GET /health`, `POST /session`, `POST /session/{id}/message` (SSE), `
 
 ### Containerized run (recommended test surface)
 
-A `Dockerfile` + `docker-compose.yml` ship with the repo. **Docker is the recommended way to
-test the full stack with citations**: `torch`/`sentence-transformers` install cleanly on the
-Linux base, so the image **builds the RAG index at image-build time** and warms the local
-embedder (`bge-small-en-v1.5`) + cross-encoder reranker (`bge-reranker-base`) into the image —
-retrieval (and therefore cited SOAP observations) works **offline, out of the box**. (On a
-Windows host where torch fails to load, retrieval degrades gracefully to *uncited*; the
-container avoids that entirely.)
+A `Dockerfile` and `docker-compose.yml` ship with the repo. **Docker is the recommended way to test
+the full stack with citations:** `torch`/`sentence-transformers` install cleanly on the Linux base,
+so the image **builds the RAG index at image-build time** and warms the local embedder
+(`bge-small-en-v1.5`) and cross-encoder reranker (`bge-reranker-base`) into the image. Retrieval (and
+therefore cited SOAP observations) works **offline, out of the box**. (On a Windows host where torch
+fails to load, retrieval degrades gracefully to *uncited*; the container avoids that entirely.)
 
 ```bash
-# build the image (bakes the RAG index — first build pulls CPU torch + the two models) and run
+# build the image (bakes the RAG index; first build pulls CPU torch + the two models) and run
 docker compose up --build
 
 # then open http://localhost:8000
 ```
 
-- **Secrets are never baked in.** The LLM credentials are read at **runtime** from `.env`
-  (compose `env_file`), not copied into the image (`.dockerignore` excludes `.env`, `data/`,
-  caches). Comment out the `env_file:` line to run fully key-free — the deterministic safety
-  gate, the UI, and the committed Proof artifacts all work with no key; only live intake turns
-  and the terminal SOAP/triage call need the model.
+- **Secrets are never baked in.** The LLM credentials are read at **runtime** from `.env` (compose
+  `env_file`), not copied into the image (`.dockerignore` excludes `.env`, `data/`, caches). Comment
+  out the `env_file:` line to run fully key-free: the deterministic safety gate, the UI, and the
+  committed Proof artifacts all work with no key; only live intake turns and the terminal SOAP/triage
+  call need the model.
 - **One process, one port.** The container serves the API, the static UI at `/`, and
   `/proof/{leaderboard,cost_report}.json`. A `HEALTHCHECK` polls `/health`.
-- **Persistence.** The SQLite DB + RAG index live inside the container (ephemeral — fine for
+- **Persistence.** The SQLite DB and RAG index live inside the container (ephemeral, fine for
   testing). For a durable store, mount a volume at `/app/data` and re-run `python -m
   scribeintake.rag.ingest` inside it, or bind-mount a pre-built `data/.rag_index`.
 
@@ -69,50 +68,51 @@ docker run --rm -p 8000:8000 --env-file .env scribeintake:1.0.0
 
 ## 2. Configuration & secrets
 
-All secrets are env-only (`.env` is gitignored and **never** committed — enforced by
+All secrets are env-only (`.env` is gitignored and **never** committed, enforced by
 `scripts/audit.py`, which scans the tree *and* git history on every push).
 
 | Env var | Purpose | Required for |
 |---|---|---|
-| `AZURE_OPENAI_API_KEY` / `AZURE_OPENAI_ENDPOINT` | the wired GPT-5.5 deployment (Split 03) | live turns |
+| `AZURE_OPENAI_API_KEY` / `AZURE_OPENAI_ENDPOINT` | the wired GPT-5.5 deployment | live turns |
 | `CHAT_LLM_MODEL` | model id (default `gpt-5.5`) | live turns |
-| `ANTHROPIC_API_KEY` | the spec's Claude pin (forward-compat) | live turns (Claude path) |
+| `ANTHROPIC_API_KEY` | the Claude pin (forward-compat) | live turns (Claude path) |
 | `API_CORS_ORIGINS` | CORS allowlist (default `*`) | split-origin UI |
 | `DATA_DIR` | SQLite + RAG index location (default `<repo>/data`, gitignored) | persistence |
 
 The deterministic tier, the per-commit gate, and the emergency/injection safety flows need **no
-secret at all** — the gate is code.
+secret at all**. The gate is code.
 
 ---
 
 ## 3. The HIPAA-boundary posture (the healthcare differentiator)
 
-The clinical-safety thesis is also a **deployment** thesis. Every component that touches patient
-text runs **locally**; the **only** egress is the LLM call:
+The clinical-safety thesis is also a **deployment** thesis. Every component that touches patient text
+runs **locally**; the **only** egress is the LLM call:
 
 | Component | Location | Touches patient text? |
 |---|---|---|
-| Safety extractor + rule engine (`safety/`) | **local** (pure code) | yes — never leaves the box |
+| Safety extractor + rule engine (`safety/`) | **local** (pure code) | yes, never leaves the box |
 | Intake state machine (`intake/`) | **local** | yes |
 | Embeddings + cross-encoder rerank + BM25 (`rag/`) | **local** (sentence-transformers, no API) | yes |
 | SQLite storage (`db.py`) | **local** file | yes |
 | Triage floor / clamp / summary assembly | **local** code | yes |
-| **LLM call** (intake loop, SOAP/triage) | **remote** | **yes — the one boundary** |
+| **LLM call** (intake loop, SOAP/triage) | **remote** | **yes, the one boundary** |
 
-`scripts/audit.py` asserts this (`local_only`): the safety + RAG paths contain no `anthropic` /
-`openai` / `requests.post` / `httpx.post` token — they cannot call out.
+`scripts/audit.py` asserts this (`local_only`): the safety and RAG paths contain no `anthropic` /
+`openai` / `requests.post` / `httpx.post` token, so they cannot call out.
 
 **To run inside a HIPAA boundary you change one thing:** point the LLM client at a **BAA-covered
-endpoint** — Amazon Bedrock, Google Vertex, or the Anthropic/Azure platform under a signed BAA.
-Nothing else moves: embeddings, rerank, BM25, the safety gate, and storage are already local, so no
-PHI is sent to any third party other than that one BAA-covered model endpoint. The `StructuredClient`
-/ agent-loop client seam (Split 03) is the single place to re-point.
+endpoint**, such as Amazon Bedrock, Google Vertex, or the Anthropic/Azure platform under a signed
+BAA. Nothing else moves: embeddings, rerank, BM25, the safety gate, and storage are already local, so
+no PHI is sent to any third party other than that one BAA-covered model endpoint. The
+`StructuredClient` / agent-loop client seam is the single place to re-point.
 
 ### What is **not** production-hardened in this demo
+
 - Single-instance, single-process; no auth/RBAC, no rate limiting, no TLS termination (front it with
-  a reverse proxy + a BAA-covered model endpoint for real use).
+  a reverse proxy and a BAA-covered model endpoint for real use).
 - SQLite (fine for the demo; swap for a managed encrypted store behind the same `db.py` seam).
-- Synthetic data only — **no real PHI** is in scope for v1.
+- Synthetic data only. **No real PHI** is in scope for v1.
 
 ---
 
@@ -121,8 +121,8 @@ PHI is sent to any third party other than that one BAA-covered model endpoint. T
 Run the acceptance gate and read the sign-off matrix:
 
 ```bash
-make acceptance-ci          # no key — gated rows (suite, eval, invariants, audit, safety e2e)
-make acceptance             # with a key in .env — adds the live model row + measured perf
+make acceptance-ci          # no key; gated rows (suite, eval, invariants, audit, safety e2e)
+make acceptance             # with a key in .env; adds the live model row + measured perf
 cat acceptance_report.md    # the sign-off matrix
 ```
 

@@ -1,4 +1,4 @@
-# ScribeIntake — Release Acceptance Report
+# ScribeIntake: Release Acceptance Report
 
 - **Generated:** local-run
 - **Overall:** ✅ PASS
@@ -26,7 +26,7 @@
 
 | Check | Status | Detail |
 |---|---|---|
-| `deterministic_suite` | ✅ PASS | 632 passed, 23 deselected in 12.35s |
+| `deterministic_suite` | ✅ PASS | 637 passed, 23 deselected in 12.35s |
 | `deterministic_eval` | ✅ PASS | rule_correctness=100% · frozen_must_escalate=0 miss · triage_floor_never_violated=100% · schema_validity=100% |
 | `six_invariant_guard` | ✅ PASS | 26 passed in 0.97s |
 | `audit:secrets` | ✅ PASS | no key-shaped strings in the tracked tree; .env never committed; history clean |
@@ -35,7 +35,7 @@
 | `audit:local_only` | ✅ PASS | safety + RAG paths are local-only (extractor/rules/retrieve/ingest); LLM is the only egress |
 | `audit:pip_audit` | ℹ️ INFO | pip-audit not installed - scan skipped |
 | `safety_e2e` | ✅ PASS | emergency → halt + agent never ran; injection → gate still fires EMERGENCY |
-| `live_model_e2e` | ⏭️ SKIP | no API key (or --deterministic-only) — live model row skipped |
-| `perf` | ℹ️ INFO | no fresh traces — recorded Split-09 live: intake p50=2290ms / p95=4715ms (both inside §18 3000/6000ms); re-measure with a keyed run |
+| `live_model_e2e` | ⏭️ SKIP | no API key (or --deterministic-only); live model row skipped |
+| `perf` | ℹ️ INFO | no fresh traces; recorded live: intake p50=2290ms / p95=4715ms (both inside §18 3000/6000ms); re-measure with a keyed run |
 | `docs_claims` | ✅ PASS | README headline numbers trace to leaderboard.json; all relative links resolve |
 

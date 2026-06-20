@@ -1,6 +1,6 @@
 # core
 
-The standalone engine — the core domain logic as a framework-free, installable package.
+The standalone engine: the core domain logic as a framework-free, installable package.
 
 This package knows nothing about HTTP, UI, or how it's deployed. It exposes a clean
 Python API (and a CLI) that everything else builds on. It can be imported into a

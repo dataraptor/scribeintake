@@ -87,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         report.notes.append(
             "Synthetic demonstration of the cache-aware pipeline (key-free, byte-reproducible). On "
             "the wired Azure GPT-5.5 deployment, prompt caching is verified LIVE on the terminal "
-            "build_summary call (cache_read 0→1280 tok on warm repeats — see observability/"
+            "build_summary call (cache_read 0→1280 tok on warm repeats, see observability/"
             "cache_check.py); the agent loop's prefix does not surface cache hits on this "
             "deployment. Run `python -m observability` over a live DB for real per-session numbers."
         )

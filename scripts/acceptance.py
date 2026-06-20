@@ -11,7 +11,7 @@ Run order (aborts the *live* portion, never the gated portion, when no key is pr
   4. Security/deps audit (secrets / gitignored / deps-pinned / local-only) — **gated**.
   5. Safety e2e (key-free): emergency + injection through the real orchestrator — **gated**.
   6. Live model e2e (needs a key): a routine turn streams a model question — skipped if no key.
-  7. Perf (§18): p50/p95 vs targets — measured live, else the recorded Split-09 numbers.
+  7. Perf (§18): p50/p95 vs targets, measured live, else the recorded live numbers.
   8. Docs/claims: README headline numbers trace to artifacts; relative links resolve.
 
 Usage:
@@ -174,7 +174,7 @@ def check_live_e2e(deterministic_only: bool) -> tuple[Check, list]:
     """A routine turn drives the real model and returns a CLEAR question. Trace rows for perf."""
     if deterministic_only or not _has_key():
         return (Check("live_model_e2e", SKIP,
-                      "no API key (or --deterministic-only) — live model row skipped",
+                      "no API key (or --deterministic-only); live model row skipped",
                       gated=False, proves=["live model in the loop"]), [])
     try:
         from observability.trace import read_tool_calls
@@ -216,10 +216,10 @@ def check_perf(live_rows: list) -> Check:
             f"p95={rep.intake_p95_ms:.0f}ms (n={rep.intake_n}); targets 3000/6000ms",
             gated=False, proves=["§18 p50<3s", "§18 p95<6s"],
         )
-    # No fresh traces (deterministic-only): report the recorded Split-09 live numbers vs targets.
+    # No fresh traces (deterministic-only): report the recorded live numbers vs targets.
     return Check(
         "perf", INFO,
-        "no fresh traces — recorded Split-09 live: intake p50=2290ms / p95=4715ms "
+        "no fresh traces; recorded live: intake p50=2290ms / p95=4715ms "
         "(both inside §18 3000/6000ms); re-measure with a keyed run",
         gated=False, proves=["§18 p50<3s", "§18 p95<6s"],
     )
@@ -303,7 +303,7 @@ def write_reports(checks: list[Check], matrix: list[tuple[str, str, str]],
         json.dumps(report, indent=2) + "\n", encoding="utf-8")
 
     lines = [
-        "# ScribeIntake — Release Acceptance Report",
+        "# ScribeIntake: Release Acceptance Report",
         "",
         f"- **Generated:** {generated_at}",
         f"- **Overall:** {'✅ PASS' if overall_ok else '❌ FAIL'}",

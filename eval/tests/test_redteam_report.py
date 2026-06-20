@@ -70,5 +70,5 @@ def test_committed_artifact_is_in_sync():
 def test_markdown_renders_the_headline_and_both_groups():
     md = render_markdown(build_report(SCENARIOS))
     assert "injection cannot disable the code gate" in md
-    assert "PASSED — deterministic" in md
-    assert "TRACKED — distributional" in md
+    assert "PASSED: deterministic" in md
+    assert "TRACKED: distributional" in md

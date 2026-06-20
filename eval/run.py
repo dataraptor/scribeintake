@@ -133,7 +133,7 @@ def write_leaderboard(lb: Leaderboard, out_dir: Path) -> tuple[Path, Path]:
 def render_markdown(lb: Leaderboard) -> str:
     m = lb.meta
     lines = [
-        "# ScribeIntake — Eval Leaderboard",
+        "# ScribeIntake: Eval Leaderboard",
         "",
         f"> {lb.framing}",
         "",

@@ -263,7 +263,7 @@ def _judge_stubs() -> list[MetricValue]:
             value=None,
             display="pending",
             pending=True,
-            note="LLM-judge metric — run the full tier with a key (eval.judge)",
+            note="LLM-judge metric; run the full tier with a key (eval.judge)",
         )
         for key, label in specs
     ]
@@ -287,7 +287,7 @@ def retrieval_metrics(report: RetrievalReport | None) -> list[MetricValue]:
                 MetricValue(
                     key=key, label=label, group=DISTRIBUTIONAL, reproducible=False, value=None,
                     display="pending", pending=True,
-                    note="RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)",
+                    note="RAGAS-style retrieval metric; run the full tier (eval.retrieval_eval)",
                 )
             )
         else:

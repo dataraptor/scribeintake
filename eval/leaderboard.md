@@ -1,4 +1,4 @@
-# ScribeIntake — Eval Leaderboard
+# ScribeIntake: Eval Leaderboard
 
 > 0 missed on the frozen must-escalate set (deterministic, gated at 100%); end-to-end recall pending (run the full tier with a key). Deterministic guarantees live in code and are gated; LLM-dependent metrics are reported with spread, never brittle-gated.
 
