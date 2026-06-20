@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-06-20T00:00:00Z",
+  "source": "synthetic-demo",
+  "models": {
+    "intake": "gpt-5.5",
+    "summary": "gpt-5.5"
+  },
+  "cost": {
+    "scope": "synthetic-demo",
+    "n_calls": 9,
+    "n_model_calls": 5,
+    "total_cost_usd": 0.011665000000000002,
+    "local_tool_cost_usd": 0.0,
+    "per_model": [
+      {
+        "model": "gpt-5.5",
+        "calls": 5,
+        "input_tokens": 3410,
+        "output_tokens": 660,
+        "cache_read_tokens": 6420,
+        "cache_creation_tokens": 0,
+        "cost_usd": 0.011665000000000002
+      }
+    ],
+    "per_tool_cost_usd": {
+      "agent_step": 0.0045685000000000005,
+      "record_intake": 0.0,
+      "retrieve_guideline": 0.0,
+      "build_summary": 0.005174,
+      "suggest_triage": 0.0019225000000000002
+    },
+    "savings": {
+      "with_cache_usd": 0.011665000000000002,
+      "no_cache_usd": 0.0188875,
+      "pct_saved": 0.38239576439444073,
+      "cache_read_tokens": 6420,
+      "cache_read_share": 0.6531027466937945
+    }
+  },
+  "savings": {
+    "with_cache_usd": 0.011665000000000002,
+    "no_cache_usd": 0.0188875,
+    "pct_saved": 0.38239576439444073,
+    "cache_read_tokens": 6420,
+    "cache_read_share": 0.6531027466937945
+  },
+  "latency": {
+    "intake_n": 3,
+    "intake_p50_ms": 1700.0,
+    "intake_p95_ms": 2100.0,
+    "summary_n": 1,
+    "summary_p50_ms": 2300.0,
+    "summary_p95_ms": 2300.0,
+    "first_summary_ms": 4200.0,
+    "targets": {
+      "intake_p50_ms": 3000,
+      "intake_p95_ms": 6000,
+      "summary_ms": 8000
+    },
+    "breaches": []
+  },
+  "fleet": null,
+  "tool_usage": {
+    "agent_step": 3,
+    "record_intake": 3,
+    "retrieve_guideline": 1,
+    "build_summary": 1,
+    "suggest_triage": 1
+  },
+  "cache_hit_rate": 0.6531027466937945,
+  "trace_cost_label": "$0.012 · cache 38% saved",
+  "notes": [
+    "No-cache baseline = observed cached tokens repriced at full input price (pricing.no_cache_cost_usd); the wired GPT-5.5 prefix cache is automatic, so this exact counterfactual is more rigorous than re-running.",
+    "Synthetic demonstration of the cache-aware pipeline (key-free, byte-reproducible). On the wired Azure GPT-5.5 deployment, prompt caching is verified LIVE on the terminal build_summary call (cache_read 0→1280 tok on warm repeats — see observability/cache_check.py); the agent loop's prefix does not surface cache hits on this deployment. Run `python -m observability` over a live DB for real per-session numbers."
+  ]
+}

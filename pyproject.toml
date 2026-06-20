@@ -6,7 +6,7 @@
 # Repo-wide from the start (Split 01 note): only core/tests exists today, but
 # api/tests (Split 10) and eval/tests (Split 06+) join the gate automatically once
 # their deterministic tests land — no CI edit needed.
-testpaths = ["core/tests", "api/tests", "eval/tests"]
+testpaths = ["core/tests", "api/tests", "eval/tests", "observability/tests"]
 pythonpath = ["."]
 addopts = "--import-mode=importlib"
 markers = [
@@ -21,4 +21,4 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["scribeintake"]
+known-first-party = ["scribeintake", "eval", "observability"]

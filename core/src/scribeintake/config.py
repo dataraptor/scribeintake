@@ -54,6 +54,11 @@ CITATION_MIN_SHARED = 2  # and at least this many distinct content terms shared
 CACHE_FLOOR_OPUS = 4096
 CACHE_FLOOR_SONNET = 2048
 
+# --- Latency targets (ms, spec section 18) — used by observability/latency.py to flag breaches.
+LATENCY_TARGET_INTAKE_P50_MS = 3000
+LATENCY_TARGET_INTAKE_P95_MS = 6000
+LATENCY_TARGET_SUMMARY_MS = 8000  # the terminal SOAP/triage call has its own (looser) budget
+
 # --- Locale / crisis routing ---
 LOCALE = "en-US"
 CRISIS_NUMBERS = {"lifeline": "988", "emergency": "911"}
@@ -89,6 +94,15 @@ class Settings(BaseSettings):
     azure_openai_api_key: str | None = None
     openai_api_version: str = "2025-01-01-preview"
     chat_llm_model: str | None = None  # e.g. "gpt-5.5"
+
+    # Prompt caching (spec section 7/16). With the spec's Anthropic pin this toggle would gate
+    # placement of ``cache_control`` breakpoints. The wired provider (Azure OpenAI GPT-5.5) does
+    # **automatic** prefix caching that cannot be disabled per-request, so for that backend this
+    # flag is **reporting-only**: the no-cache baseline is computed by repricing the observed
+    # cached tokens at full input price (an exact counterfactual — see
+    # ``pricing.no_cache_cost_usd`` / the Split 09 session log), which is more rigorous than
+    # re-running. Env: PROMPT_CACHE_ENABLED.
+    prompt_cache_enabled: bool = True
 
     @property
     def ACTIVE_INTAKE_MODEL(self) -> str:

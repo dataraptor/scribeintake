@@ -1,7 +1,7 @@
 # POSIX task runner. Windows/PowerShell equivalents live in tasks.ps1.
 # Canonical commands use `python -m ...` so they work without `make`.
 
-.PHONY: install install-rag lint fmt test test-live ingest eval eval-ci
+.PHONY: install install-rag lint fmt test test-live ingest eval eval-ci cost-report cache-check
 
 install:
 	pip install -e "./core[dev]"
@@ -33,3 +33,12 @@ eval:
 # Deterministic eval gate (the CI tier) — no API key; fails on any gated-metric regression.
 eval-ci:
 	python -m eval.run --deterministic-only
+
+# Cost & observability report (Split 09): reads the live DB / eval runs/ (or a synthetic demo if
+# none) and writes observability/cost_report.{json,md} + dashboard.html. No API key needed.
+cost-report:
+	python -m observability
+
+# Live prompt-cache verification (needs LLM credentials): cold-vs-warm cache_read proof.
+cache-check:
+	python -c "from observability.cache_check import run_cache_check, format_result; print(format_result(run_cache_check()))"

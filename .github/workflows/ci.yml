@@ -63,7 +63,12 @@ jobs:
         # Hard-fails ONLY on a deterministic regression (those stay gated). Distributional
         # numbers are reported, never asserted — a 1-point wobble must not break the build.
         run: python -m eval.run --n 3
-      - name: Upload leaderboard + runs
+      - name: Cost & observability report (Split 09)
+        # Regenerate the cost/observability report + dashboard over the eval runs/ fleet (falls
+        # back to the synthetic-demo trace if no live DB). Informational; never gates the build.
+        if: always()
+        run: python -m observability
+      - name: Upload leaderboard + runs + cost report
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -72,3 +77,6 @@ jobs:
             eval/leaderboard.json
             eval/leaderboard.md
             eval/runs/
+            observability/cost_report.json
+            observability/cost_report.md
+            observability/dashboard.html

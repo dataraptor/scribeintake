@@ -73,3 +73,72 @@ def cost_from_usage(model: str, usage: Any) -> float:
         cache_creation_tokens=_get("cache_creation_input_tokens"),
         cache_read_tokens=_get("cache_read_input_tokens"),
     )
+
+
+def no_cache_cost_usd(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_creation_tokens: int = 0,
+    cache_read_tokens: int = 0,
+) -> float:
+    """The **counterfactual** cost of one call had prompt caching not been in effect.
+
+    The same prompt tokens are repriced at the **full input rate**: every cached-read and
+    cache-write token is billed as if it were a fresh ``input_tokens`` token. This is the
+    apples-to-apples no-cache baseline for the savings figure (spec section 16) — it reprices
+    the *observed* token counts rather than re-running the loop, so there is zero run-to-run
+    noise. (The wired provider is Azure OpenAI GPT-5.5, whose prefix caching is **automatic**
+    and cannot be disabled via a request parameter; repricing the usage is the honest, exact way
+    to measure the caching win. See ``observability/cost.py`` and the Split 09 session log.)
+    """
+    if model not in PRICES:
+        raise ValueError(f"unknown model for pricing: {model!r}")
+    input_price, output_price = PRICES[model]
+    in_rate = input_price / _PER_MTOK
+    out_rate = output_price / _PER_MTOK
+    full_prompt = input_tokens + cache_creation_tokens + cache_read_tokens
+    return full_prompt * in_rate + output_tokens * out_rate
+
+
+def savings_vs_no_cache(rows: Any) -> dict[str, float]:
+    """Aggregate the with-cache vs no-cache cost of many model calls and the % saved.
+
+    ``rows`` is any iterable of per-call token buckets — each item a mapping (or object) with
+    ``model``, ``input_tokens``, ``output_tokens``, ``cache_creation_tokens`` and
+    ``cache_read_tokens`` (missing fields → 0). Rows whose ``model`` is ``None``/empty or not in
+    :data:`PRICES` (e.g. local ``$0`` RAG tool rows) contribute nothing and are skipped.
+
+    Returns ``{with_cache, no_cache, pct_saved, cache_read_tokens, cache_read_share}`` where
+    ``pct_saved`` is the fraction (0–1) by which caching reduced the model spend and
+    ``cache_read_share`` is the fraction of prompt tokens served from cache. Pure / deterministic.
+    """
+
+    def _get(row: Any, name: str) -> Any:
+        return row.get(name) if isinstance(row, dict) else getattr(row, name, None)
+
+    with_cache = 0.0
+    no_cache = 0.0
+    cache_read = 0
+    prompt_tokens = 0
+    for row in rows:
+        model = _get(row, "model")
+        if not model or model not in PRICES:
+            continue  # local tool rows / unknown models cost $0 and have no cache buckets
+        it = int(_get(row, "input_tokens") or 0)
+        ot = int(_get(row, "output_tokens") or 0)
+        cc = int(_get(row, "cache_creation_tokens") or 0)
+        cr = int(_get(row, "cache_read_tokens") or 0)
+        with_cache += cost_usd(model, it, ot, cc, cr)
+        no_cache += no_cache_cost_usd(model, it, ot, cc, cr)
+        cache_read += cr
+        prompt_tokens += it + cc + cr
+    pct = (no_cache - with_cache) / no_cache if no_cache > 0 else 0.0
+    share = cache_read / prompt_tokens if prompt_tokens > 0 else 0.0
+    return {
+        "with_cache": with_cache,
+        "no_cache": no_cache,
+        "pct_saved": pct,
+        "cache_read_tokens": cache_read,
+        "cache_read_share": share,
+    }
