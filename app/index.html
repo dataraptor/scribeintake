@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ScribeIntake</title>
+<!--
+  Host page for the production frontend (Split 11).
+
+  It connects the existing DC component (ScribeIntake.dc.html) to the FastAPI service. Nothing is
+  rebuilt: this page only (1) picks the API base, (2) loads the api-client + the vendored React +
+  the DC runtime, and (3) injects the component's <x-dc> + logic markup into the DOM so support.js
+  boots it. The component itself decides connected-vs-DEMO_MODE from window.SI_API.
+
+  Serving: run `uvicorn api.main:app` and open http://localhost:8000 (the API mounts this folder
+  and serves the page same-origin). For a split-origin dev setup (static server + separate API)
+  pass ?api=http://localhost:8000.
+-->
+<style>html,body{margin:0;padding:0;height:100%;background:#fff}</style>
+
+<!-- API base: same-origin by default (the API serves this page). Override with ?api=... -->
+<script>
+  (function () {
+    var q = null;
+    try { q = new URLSearchParams(location.search).get("api"); } catch (e) {}
+    // Honor an explicit ?api=; otherwise same-origin "" (works when FastAPI hosts both).
+    if (typeof window.API_BASE !== "string") window.API_BASE = q != null ? q : "";
+  })();
+</script>
+
+<!-- Vendored React UMD (offline-reproducible). support.js skips its CDN load when these exist. -->
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+
+<!-- The data layer (defines window.SI_API). Loaded before the component boots. -->
+<script src="./api-client.js"></script>
+</head>
+<body>
+<div id="app-loading" style="font-family:Inter,system-ui,sans-serif;color:#9398A1;padding:24px;font-size:14px">Loading ScribeIntake…</div>
+<script>
+  // Fetch the DC component, inject its <x-dc> template + logic <script> into the page, then load
+  // the DC runtime, which finds them and mounts. (support.js can't be `<script src>`'d a .dc.html;
+  // it reads the <x-dc> + data-dc-script nodes already in the document — see support.js boot().)
+  (function () {
+    fetch("./ScribeIntake.dc.html")
+      .then(function (r) {
+        if (!r.ok) throw new Error("failed to fetch component: " + r.status);
+        return r.text();
+      })
+      .then(function (html) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var xdc = doc.querySelector("x-dc");
+        var logic = doc.querySelector("script[data-dc-script]");
+        if (!xdc || !logic) throw new Error("component is missing <x-dc> or its logic script");
+
+        var loading = document.getElementById("app-loading");
+        if (loading) loading.remove();
+
+        // Inject the template (its inner <helmet> fonts/keyframes are handled by the runtime).
+        document.body.appendChild(xdc);
+
+        // Re-create the logic <script> so the data-dc-script node is present for boot(). The
+        // runtime reads its textContent and compiles it itself (it never executes inline).
+        var s = document.createElement("script");
+        s.type = "text/x-dc";
+        s.setAttribute("data-dc-script", "");
+        if (logic.getAttribute("data-props")) s.setAttribute("data-props", logic.getAttribute("data-props"));
+        s.textContent = logic.textContent;
+        document.body.appendChild(s);
+
+        // Now load the DC runtime; on load it boots and mounts the component.
+        var rt = document.createElement("script");
+        rt.src = "./support.js";
+        document.body.appendChild(rt);
+      })
+      .catch(function (e) {
+        var el = document.getElementById("app-loading");
+        if (el) el.textContent = "Could not load the app: " + e.message;
+        console.error("[index] boot failed:", e);
+      });
+  })();
+</script>
+</body>
+</html>

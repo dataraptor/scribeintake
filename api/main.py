@@ -16,7 +16,8 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from scribeintake import db
 from scribeintake.config import MODEL_SUMMARY, settings
@@ -31,6 +32,15 @@ RECONNECT_MSG = (
     "We hit a snag reaching the assistant. Your information is saved — please send that again."
 )
 _STREAM_CHUNK = 24  # characters per streamed token frame (v1: chunk the final text, see §3.2)
+
+# Repo root (parent of api/) — used to serve the static frontend and the committed proof artifacts.
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_APP_DIR = _REPO_ROOT / "app"
+# The Proof tab's real numbers (Split 07/08 leaderboard, Split 09 cost report). Served read-only.
+_PROOF_FILES = {
+    "leaderboard.json": _REPO_ROOT / "eval" / "leaderboard.json",
+    "cost_report.json": _REPO_ROOT / "observability" / "cost_report.json",
+}
 
 
 def create_app(db_path: str | Path | None = None) -> FastAPI:
@@ -52,6 +62,7 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     _register_routes(app)
+    _mount_frontend(app)
     return app
 
 
@@ -169,6 +180,23 @@ def _register_routes(app: FastAPI) -> None:
         soap = json.loads(row["soap_json"])
         return JSONResponse(serialize.summary_response(soap, band=band).model_dump(by_alias=True))
 
+    @app.get("/proof/{name}")
+    def proof(name: str):
+        """Serve a committed Proof artifact (leaderboard / cost report) for the Proof tab.
+
+        Read-only static JSON — no engine or model logic. Missing file -> a friendly 404 so the
+        frontend simply falls back to its placeholders.
+        """
+        path = _PROOF_FILES.get(name)
+        if path is None or not path.exists():
+            return JSONResponse(
+                status_code=404,
+                content=schemas.ErrorResponse(
+                    error="proof_not_found", detail=f"No proof artifact {name!r}."
+                ).model_dump(by_alias=True),
+            )
+        return FileResponse(path, media_type="application/json")
+
     @app.get("/session/{session_id}/trace")
     def trace(session_id: str, request: Request):
         conn = deps.open_conn(request.app.state.db_path)
@@ -179,6 +207,17 @@ def _register_routes(app: FastAPI) -> None:
         finally:
             conn.close()
         return JSONResponse(serialize.trace_response(rows, session_id).model_dump(by_alias=True))
+
+
+def _mount_frontend(app: FastAPI) -> None:
+    """Mount the static frontend at ``/`` so ``uvicorn api.main:app`` serves the whole app.
+
+    This is **serving wiring only** (the Split-11 one-command serve, spec §14) — no business or
+    safety logic. ``html=True`` serves ``app/index.html`` at ``/`` and the component / client /
+    vendored React as static files. Mounted last so the explicit API + ``/proof`` routes win.
+    """
+    if _APP_DIR.is_dir():
+        app.mount("/", StaticFiles(directory=str(_APP_DIR), html=True), name="frontend")
 
 
 # The module-level app for ``uvicorn api.main:app`` (uses the default data/ DB path).

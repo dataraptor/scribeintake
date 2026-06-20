@@ -55,6 +55,7 @@ def turn_response(turn: Any) -> schemas.TurnResponse:
         floor_pinned=turn.triage_floor is not TriageBand.self_care,
         ready_to_summarize=turn.status == "completed",
         triage_band=turn.triage_band.value if turn.triage_band else None,
+        open_slots=list(turn.open_slots or []),
         strip=strip_view(turn),
         emergency=emergency,
         trace_delta=[_trace_row(t) for t in turn.traces],

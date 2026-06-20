@@ -183,10 +183,12 @@ def test_trace_unknown_session_404(client):
 # ------------------------------------------------------------- statelessness (no session map)
 def test_stateless_fresh_connection_per_request(client, monkeypatch):
     """Each request opens its own DB connection — there is no in-memory session map."""
-    seen_conn_ids = []
+    # Hold references to the actual connection objects (not id()): keeping them alive means
+    # CPython can't reuse a freed address, so identity comparison is reliable, not flaky.
+    seen_conns = []
 
     def capture(sid, text, *, conn):
-        seen_conn_ids.append(id(conn))
+        seen_conns.append(conn)
         return make_clear_turn(sid)
 
     monkeypatch.setattr("api.main.run_turn", capture)
@@ -194,8 +196,8 @@ def test_stateless_fresh_connection_per_request(client, monkeypatch):
     client.post(f"/session/{sid}/message", json={"text": "one"}, headers=JSON)
     client.post(f"/session/{sid}/message", json={"text": "two"}, headers=JSON)
 
-    assert len(seen_conn_ids) == 2
-    assert seen_conn_ids[0] != seen_conn_ids[1]  # distinct connections, not a shared cache
+    assert len(seen_conns) == 2
+    assert seen_conns[0] is not seen_conns[1]  # distinct connections, not a shared cache
     assert not hasattr(client.app.state, "sessions")  # no module-level session store
 
 

@@ -118,6 +118,10 @@ class TurnResponse(_Base):
     floor_pinned: bool = Field(False, alias="floorPinned")
     ready_to_summarize: bool = Field(False, alias="readyToSummarize")
     triage_band: str | None = Field(None, alias="triageBand")
+    # Canonical slot keys still needing an answer (the engine's open required/branch slots). The
+    # frontend marks a slot filled when it is *not* in this list, so the intake progress bar is
+    # honest without a per-slot value contract. Empty once intake is complete.
+    open_slots: list[str] = Field(default_factory=list, alias="openSlots")
     strip: StripView
     emergency: EmergencyPayload | None = None
     trace_delta: list[TraceRowView] = Field(default_factory=list, alias="traceDelta")
