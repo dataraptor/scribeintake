@@ -1,7 +1,7 @@
 # POSIX task runner. Windows/PowerShell equivalents live in tasks.ps1.
 # Canonical commands use `python -m ...` so they work without `make`.
 
-.PHONY: install install-api install-rag lint fmt test test-live ingest eval eval-ci cost-report cache-check run-api demo
+.PHONY: install install-api install-rag lint fmt test test-live ingest eval eval-ci redteam cost-report cache-check run-api demo
 
 install:
 	pip install -e "./core[dev]"
@@ -38,6 +38,11 @@ eval:
 # Deterministic eval gate (the CI tier) — no API key; fails on any gated-metric regression.
 eval-ci:
 	python -m eval.run --deterministic-only
+
+# Adversarial red-team report (Split 13): the deterministic safety-under-attack proof (no API
+# key) → eval/redteam_report.{json,md}. Add `ARGS=--live` to also measure the tracked rates.
+redteam:
+	python -m eval.redteam $(ARGS)
 
 # Cost & observability report (Split 09): reads the live DB / eval runs/ (or a synthetic demo if
 # none) and writes observability/cost_report.{json,md} + dashboard.html. No API key needed.

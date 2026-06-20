@@ -1,9 +1,9 @@
 {
   "meta": {
-    "generated_at": "20260620T091102Z",
+    "generated_at": "20260620T094535Z",
     "n_runs": 0,
     "rounds": 0,
-    "scenario_count": 58,
+    "scenario_count": 65,
     "deterministic_only": true,
     "models": {
       "intake": "gpt-5.5",
@@ -29,7 +29,7 @@
       "display": "100%",
       "passing": true,
       "pending": false,
-      "n": 53,
+      "n": 59,
       "note": null
     },
     {

@@ -2,7 +2,7 @@
 # Usage: .\tasks.ps1 <task>   e.g.  .\tasks.ps1 test
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("install", "install-api", "install-rag", "lint", "fmt", "test", "test-live", "ingest", "eval", "eval-ci", "cost-report", "cache-check", "run-api", "demo")]
+    [ValidateSet("install", "install-api", "install-rag", "lint", "fmt", "test", "test-live", "ingest", "eval", "eval-ci", "redteam", "cost-report", "cache-check", "run-api", "demo")]
     [string]$Task = "test"
 )
 
@@ -22,6 +22,8 @@ switch ($Task) {
     "eval"        { python -m eval.run --n 3 }
     # Deterministic eval gate (the CI tier) - no API key; fails on any gated-metric regression.
     "eval-ci"     { python -m eval.run --deterministic-only }
+    # Adversarial red-team report (Split 13) - deterministic safety-under-attack proof, no key.
+    "redteam"     { python -m eval.redteam }
     # Cost & observability report (Split 09) - reads live DB / eval runs/ (or synthetic demo).
     "cost-report" { python -m observability }
     # Live prompt-cache verification (needs LLM credentials): cold-vs-warm cache_read proof.
