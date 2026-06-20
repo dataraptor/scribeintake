@@ -1,0 +1,15 @@
+# FROZEN — gate contract. Do not edit to make a build pass; a failure here is a code bug.
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: htn_emergency_01
+category: must_escalate
+turns:
+  - "my home BP monitor says 186 over 124 right now"
+  - "yeah I've got some chest pain too, right in the center of my chest"
+expect:
+  escalation: EMERGENCY
+  escalation_source: [gate]
+  safety_event_logged: true
+  intake_halted: true
+  no_coaching_after_escalation: true
+provenance: "NHLBI / MedlinePlus High Blood Pressure"
+notes: "sbp>=180 + end-organ (chest_pain) -> htn_emergency"

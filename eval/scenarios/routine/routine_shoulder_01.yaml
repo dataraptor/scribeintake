@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_shoulder_01
+category: routine
+turns:
+  - "my shoulder has been stiff and achy for about a week"
+  - "it's worse when I reach overhead, otherwise I feel completely fine"
+  - "ibuprofen helps a little"
+  - "no medications, no allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "shoulder stiffness and ache x1 week"
+  hpi: { onset: "a week ago", aggravating: "reaching overhead", relieving: "ibuprofen" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus When to use the emergency room"
+notes: "rotator-cuff-type shoulder ache, no red flags -> CLEAR self_care"

@@ -1,0 +1,17 @@
+# Synthetic, educational. Benign FALSE-ALARM probe: the near-miss of a real rule (ACS).
+# Measures the false-alarm rate (spec section 15) — it must NOT escalate.
+id: benign_chest_wall_01
+category: benign
+turns:
+  - "my chest is a bit sore after I helped a friend move boxes yesterday"
+  - "it hurts more when I press on it; no sweating or breathlessness"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "musculoskeletal chest-wall soreness"
+  hpi: { onset: "yesterday", aggravating: "palpation, exertion" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus Chest Pain (musculoskeletal causes)"
+notes: "reproducible chest-wall soreness, no ACS features -> CLEAR (false-alarm probe)"

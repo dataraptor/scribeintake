@@ -1,0 +1,19 @@
+# Synthetic, educational. HELD-OUT (anti-overfit): never shown to the agent prompt/few-shots.
+id: heldout_htn_urgency_01
+category: urgent
+heldout: true
+turns:
+  - "my blood pressure cuff read 181 over 119 just now"
+  - "I feel okay, no chest pain, no headache, no vision changes"
+  - "no medications, no allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "elevated blood pressure reading"
+  hpi: { onset: "today" }
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "NHLBI High Blood Pressure"
+notes: "held-out; sbp 181 (>=180) without end-organ -> htn_urgency"

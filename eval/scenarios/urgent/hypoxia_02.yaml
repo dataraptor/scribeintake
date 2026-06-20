@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: hypoxia_02
+category: urgent
+turns:
+  - "my home oximeter keeps showing my oxygen at 91"
+  - "I feel okay, not short of breath, just wanted to check"
+  - "no medications or allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "borderline-low oxygen reading at home"
+  hpi: { onset: "today" }
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "MedlinePlus Hypoxemia"
+notes: "spo2 91 (<92) without cant_breathe -> hypoxia (URGENT)"

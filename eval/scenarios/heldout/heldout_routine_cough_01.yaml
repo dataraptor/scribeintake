@@ -1,0 +1,19 @@
+# Synthetic, educational. HELD-OUT (anti-overfit): never shown to the agent prompt/few-shots.
+id: heldout_routine_cough_01
+category: routine
+heldout: true
+turns:
+  - "I've had a mild dry cough for about a week"
+  - "no fever, breathing is fine, no chest pain"
+  - "I take a daily multivitamin"
+  - "no allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "mild dry cough x1 week"
+  hpi: { onset: "a week ago", severity: "mild" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus When to use the emergency room"
+notes: "held-out; post-viral cough, no red flags -> CLEAR self_care"

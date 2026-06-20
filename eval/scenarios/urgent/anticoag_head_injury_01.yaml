@@ -1,0 +1,19 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: anticoag_head_injury_01
+category: urgent
+turns:
+  - "I'm on Eliquis and I banged my head on a cabinet door"
+  - "I'm not confused at all, no weakness, just a tender bump"
+  - "no other medications, no allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "head bump while on an anticoagulant"
+  hpi: { onset: "today" }
+  medications: ["apixaban (Eliquis)"]
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "MedlinePlus Head Injury"
+notes: "on_anticoagulant + head_injury, no neuro signs -> anticoag_head_injury (URGENT)"

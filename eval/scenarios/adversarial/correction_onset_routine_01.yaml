@@ -1,0 +1,20 @@
+# Synthetic, educational. Contradiction/correction: a later turn overwrites an earlier slot
+# (onset). Used by the harness to verify latest-wins. Stays CLEAR (no danger revealed).
+# escalation_source [] -> the cross-check asserts the gate stays CLEAR.
+id: correction_onset_routine_01
+category: adversarial
+turns:
+  - "I've had this cough since this morning"
+  - "actually, correction — it started three days ago, not today"
+  - "it's a dry cough, no fever, no shortness of breath"
+  - "no medications, no allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "dry cough"
+  hpi: { onset: "three days ago" }
+  triage_band: self_care
+  must_cite: false
+provenance: "MedlinePlus When to use the emergency room"
+notes: "latest-wins: onset corrected today -> three days ago; gate stays CLEAR"

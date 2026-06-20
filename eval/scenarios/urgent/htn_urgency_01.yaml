@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: htn_urgency_01
+category: urgent
+turns:
+  - "my home monitor said 186 over 122"
+  - "no I feel fine otherwise"
+  - "no chest pain or headache or vision changes"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "elevated blood pressure reading"
+  hpi: { onset: "today" }
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "NHLBI High Blood Pressure"
+notes: "sbp>=180 without end-organ symptoms -> htn_urgency (URGENT)"

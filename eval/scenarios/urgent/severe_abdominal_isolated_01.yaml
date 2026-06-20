@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: severe_abdominal_isolated_01
+category: urgent
+turns:
+  - "I've had severe stomach pain for a few hours"
+  - "no I'm not vomiting blood, my belly isn't rigid, and I'm not pregnant"
+  - "no regular medications, no allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "severe abdominal pain"
+  hpi: { onset: "a few hours ago", severity: "severe" }
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "MedlinePlus Abdominal Pain"
+notes: "severe_abdominal_pain without bleed/rigidity/pregnancy -> severe_abdominal_isolated"

@@ -1,0 +1,20 @@
+# eval module config (Split 06).
+#
+# `eval/` is NOT pip-installed — it is imported in-process via the repo-root `pythonpath`
+# (root pyproject.toml: `pythonpath = ["."]`), so `from eval.scenario import ...` resolves
+# without a build step. This file therefore carries no `[build-system]`/`[project]`; it
+# documents the module's dependencies and registers the test markers for consistency with
+# `core/pyproject.toml` (the root config governs when pytest runs from the repo root).
+#
+# Dependencies (all already provided by `pip install -e ./core[dev]`):
+#   - scribeintake (core)  — the safety gate + enums the gold labels cross-check against
+#   - pyyaml   >=6.0,<7     — scenario parsing (a base dep of core)
+#   - pydantic >=2.5,<3     — the Scenario schema (a base dep of core)
+#
+# So CI needs no extra install: the core install already brings pyyaml + pydantic, and the
+# eval package is import-only.
+
+[tool.pytest.ini_options]
+markers = [
+    "live: tests that call a live LLM API or load ML models (needs LLM credentials, e.g. AZURE_OPENAI_API_KEY / ANTHROPIC_API_KEY)",
+]

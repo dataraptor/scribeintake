@@ -1,0 +1,19 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_med_refill_01
+category: routine
+turns:
+  - "I need to talk about refilling my blood pressure medication"
+  - "my readings at home have been around 128 over 82, feeling well"
+  - "I take amlodipine daily"
+  - "no allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "blood pressure medication refill, well-controlled"
+  hpi: { onset: "ongoing" }
+  medications: ["amlodipine"]
+  triage_band: gp_routine
+  must_cite: true
+provenance: "NHLBI High Blood Pressure"
+notes: "normal BP (128/82), no symptoms -> CLEAR gp_routine"

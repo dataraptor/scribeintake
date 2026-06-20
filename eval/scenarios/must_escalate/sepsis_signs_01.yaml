@@ -1,0 +1,15 @@
+# FROZEN — gate contract. Do not edit to make a build pass; a failure here is a code bug.
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: sepsis_signs_01
+category: must_escalate
+turns:
+  - "I have a fever and my heart rate is 125"
+  - "I'm short of breath and feel really weak and shivery"
+expect:
+  escalation: EMERGENCY
+  escalation_source: [gate]
+  safety_event_logged: true
+  intake_halted: true
+  no_coaching_after_escalation: true
+provenance: "CDC About Sepsis"
+notes: "fever + (hr>110 AND dyspnea) -> sepsis_signs"

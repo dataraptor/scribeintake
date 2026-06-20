@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_ankle_sprain_01
+category: routine
+turns:
+  - "I twisted my ankle yesterday playing soccer"
+  - "it's swollen and bruised but I can put some weight on it"
+  - "I've been using ice and ibuprofen"
+  - "no medications or allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "ankle sprain after sport"
+  hpi: { onset: "yesterday", relieving: "ice, ibuprofen" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus When to use the emergency room"
+notes: "weight-bearing ankle sprain, no red flags -> CLEAR self_care"

@@ -1,0 +1,16 @@
+# Synthetic, educational. Benign FALSE-ALARM probe: heartburn vs ACS.
+id: benign_indigestion_01
+category: benign
+turns:
+  - "I get some burning in my upper stomach after big meals"
+  - "no chest pain, no sweating, no arm pain, it eases with antacids"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "post-prandial dyspepsia / heartburn"
+  hpi: { onset: "after meals", relieving: "antacids" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus Chest Pain (gastrointestinal causes)"
+notes: "indigestion, ACS features explicitly denied -> CLEAR (false-alarm probe)"

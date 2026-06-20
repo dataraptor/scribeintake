@@ -1,0 +1,19 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: anticoag_head_injury_02
+category: urgent
+turns:
+  - "I'm on warfarin and I hit my head getting out of the car"
+  - "I feel totally normal, no confusion, no weakness in my arms or legs"
+  - "no allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "minor head injury while anticoagulated"
+  hpi: { onset: "today" }
+  medications: ["warfarin"]
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "MedlinePlus Head Injury"
+notes: "on_anticoagulant + head_injury, no neuro signs -> anticoag_head_injury (URGENT)"

@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: hypoxia_01
+category: urgent
+turns:
+  - "my O2 sat is 90 on my finger monitor"
+  - "no I'm not short of breath, I can talk in full sentences"
+  - "no medications, no allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "low pulse-oximeter reading without distress"
+  hpi: { onset: "today" }
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "MedlinePlus Hypoxemia"
+notes: "spo2 < 92 without cant_breathe -> hypoxia (URGENT)"

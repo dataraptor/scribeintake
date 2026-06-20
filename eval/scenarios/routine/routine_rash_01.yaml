@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_rash_01
+category: routine
+turns:
+  - "I've got a mild itchy rash on my forearm since yesterday"
+  - "no swelling, no trouble breathing, no known allergies"
+  - "I haven't taken anything for it"
+  - "no regular medications"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "localized itchy rash on the forearm"
+  hpi: { onset: "yesterday", severity: "mild" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus When to use the emergency room"
+notes: "localized rash, no anaphylaxis features -> CLEAR self_care"

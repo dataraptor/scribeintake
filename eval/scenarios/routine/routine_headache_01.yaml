@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_headache_01
+category: routine
+turns:
+  - "I've had a mild tension headache for two days"
+  - "no fever or neck stiffness, it comes and goes"
+  - "ibuprofen helps a bit"
+  - "no other meds, no allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "tension-type headache x2 days"
+  hpi: { onset: "two days ago", character: "dull, intermittent", relieving: "ibuprofen" }
+  triage_band: gp_routine
+  must_cite: true
+provenance: "MedlinePlus Headache"
+notes: "no red-flag headache features -> CLEAR"

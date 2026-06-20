@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_knee_01
+category: routine
+turns:
+  - "my right knee has been sore after I started running again"
+  - "it aches after exercise, no swelling or redness, full movement"
+  - "ibuprofen and ice help"
+  - "no medications or allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "exertional knee soreness after resuming running"
+  hpi: { onset: "recent", aggravating: "exercise", relieving: "ibuprofen, ice" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus When to use the emergency room"
+notes: "overuse knee pain, no red flags -> CLEAR self_care"

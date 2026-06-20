@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_med_question_01
+category: routine
+turns:
+  - "I just have a question about taking vitamin D"
+  - "no symptoms, I feel well, just want general dosing info"
+  - "no regular medications"
+  - "no allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "general question about vitamin D supplementation"
+  hpi: { onset: "n/a" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus When to use the emergency room"
+notes: "informational, asymptomatic -> CLEAR self_care"

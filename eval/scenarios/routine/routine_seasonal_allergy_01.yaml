@@ -1,0 +1,20 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+# Near-miss of anaphylaxis: an allergen is mentioned but there is no airway/breathing danger.
+id: routine_seasonal_allergy_01
+category: routine
+turns:
+  - "my seasonal allergies are flaring, lots of sneezing"
+  - "no throat swelling, no trouble breathing, no hives"
+  - "I take loratadine when it's bad"
+  - "no other allergies to medications"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "seasonal allergic rhinitis"
+  hpi: { onset: "seasonal" }
+  medications: ["loratadine"]
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus Anaphylaxis"
+notes: "allergen exposure alone, no airway/dyspnea -> CLEAR self_care"

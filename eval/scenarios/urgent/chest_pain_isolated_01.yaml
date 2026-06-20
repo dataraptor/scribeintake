@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: chest_pain_isolated_01
+category: urgent
+turns:
+  - "I have some chest pain but it's not too bad"
+  - "no it doesn't spread anywhere, no sweating or shortness of breath"
+  - "no nausea either, and I'm on no medications, no allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "chest pain without red-flag features"
+  hpi: { severity: "mild", radiation: "none" }
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "MedlinePlus Chest Pain"
+notes: "chest_pain without ACS features -> chest_pain_isolated (URGENT)"

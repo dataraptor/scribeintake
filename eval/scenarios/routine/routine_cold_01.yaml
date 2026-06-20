@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_cold_01
+category: routine
+turns:
+  - "I've had a runny nose and sore throat for three days"
+  - "low-grade, no fever, breathing is fine"
+  - "just taking some throat lozenges"
+  - "no allergies, no other meds"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "upper respiratory cold symptoms"
+  hpi: { onset: "three days ago", severity: "mild" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus When to use the emergency room"
+notes: "common cold, no red flags -> CLEAR self_care"

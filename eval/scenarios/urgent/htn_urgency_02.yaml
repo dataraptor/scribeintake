@@ -1,0 +1,19 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: htn_urgency_02
+category: urgent
+turns:
+  - "I checked my blood pressure twice and it was 192 over 110 both times"
+  - "I feel completely normal, no symptoms at all"
+  - "I take amlodipine, no allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "repeated elevated blood pressure readings"
+  hpi: { onset: "today" }
+  medications: ["amlodipine"]
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "NHLBI High Blood Pressure"
+notes: "sbp>=180 (192), no end-organ -> htn_urgency"

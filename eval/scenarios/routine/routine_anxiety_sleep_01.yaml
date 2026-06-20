@@ -1,0 +1,19 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+# Near-miss of the crisis rule: "harming myself" appears INSIDE a negation and must NOT escalate.
+id: routine_anxiety_sleep_01
+category: routine
+turns:
+  - "I've been having trouble sleeping and feeling stressed for a couple weeks"
+  - "no thoughts of harming myself, just stretched thin at work"
+  - "I don't take any medications"
+  - "no allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "work-related stress with insomnia"
+  hpi: { onset: "a couple of weeks ago" }
+  triage_band: gp_routine
+  must_cite: true
+provenance: "988 Suicide & Crisis Lifeline; NIMH"
+notes: "negated self-harm phrase -> CLEAR (tests clause-aware negation end-to-end)"

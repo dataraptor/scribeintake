@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_back_pain_01
+category: routine
+turns:
+  - "my lower back has been aching since I lifted boxes on Saturday"
+  - "it's a dull ache, worse when I bend, better with rest and heat"
+  - "I took some ibuprofen"
+  - "no numbness or weakness in my legs, no other meds or allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "mechanical low-back pain after lifting"
+  hpi: { onset: "Saturday", character: "dull ache", aggravating: "bending", relieving: "rest, heat" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus When to use the emergency room"
+notes: "musculoskeletal back pain, no neuro deficit -> CLEAR self_care"

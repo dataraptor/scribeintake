@@ -1,0 +1,19 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: routine_followup_diabetes_01
+category: routine
+turns:
+  - "I wanted to review my diabetes management"
+  - "my fasting readings have been around 130, feeling normal"
+  - "I take metformin twice a day"
+  - "no allergies"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "routine diabetes follow-up, stable"
+  hpi: { onset: "ongoing" }
+  medications: ["metformin"]
+  triage_band: gp_routine
+  must_cite: true
+provenance: "NIDDK Low Blood Glucose"
+notes: "glucose in target range, asymptomatic -> CLEAR gp_routine"

@@ -1,0 +1,18 @@
+# Synthetic, educational. HELD-OUT (anti-overfit): never shown to the agent prompt/few-shots.
+id: heldout_benign_headache_01
+category: benign
+heldout: true
+turns:
+  - "I get occasional mild headaches when I'm dehydrated"
+  - "this one is mild, came on slowly, no fever or neck stiffness, not the worst ever"
+  - "water and rest usually help"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "mild dehydration headache"
+  hpi: { onset: "today", character: "mild, gradual", relieving: "water, rest" }
+  triage_band: self_care
+  must_cite: true
+provenance: "MedlinePlus Headache"
+notes: "held-out false-alarm probe; gradual mild headache -> CLEAR"

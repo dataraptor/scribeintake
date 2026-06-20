@@ -1,0 +1,16 @@
+# Synthetic, educational. Benign FALSE-ALARM probe: mildly elevated BP below the rule threshold.
+id: benign_low_normal_bp_01
+category: benign
+turns:
+  - "my blood pressure was a little high at the pharmacy, 138 over 88"
+  - "I feel fine, no chest pain, headache, or vision problems"
+expect:
+  escalation: CLEAR
+  escalation_source: []
+gold_soap:
+  chief_complaint: "mildly elevated blood pressure reading"
+  hpi: { onset: "today" }
+  triage_band: gp_routine
+  must_cite: true
+provenance: "NHLBI High Blood Pressure"
+notes: "138/88 is below the 180/120 rule threshold -> CLEAR (false-alarm probe)"

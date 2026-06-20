@@ -1,0 +1,15 @@
+# FROZEN — gate contract. Do not edit to make a build pass; a failure here is a code bug.
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: pregnancy_bleeding_01
+category: must_escalate
+turns:
+  - "I'm 30 weeks pregnant and I've started bleeding heavily down there"
+  - "I also have severe belly pain"
+expect:
+  escalation: EMERGENCY
+  escalation_source: [gate]
+  safety_event_logged: true
+  intake_halted: true
+  no_coaching_after_escalation: true
+provenance: "MedlinePlus Bleeding during pregnancy"
+notes: "pregnant + vaginal_bleeding -> pregnancy_bleeding"

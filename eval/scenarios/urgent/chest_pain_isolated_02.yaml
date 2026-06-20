@@ -1,0 +1,18 @@
+# Synthetic, educational. Label derived from the cited public-domain threshold.
+id: chest_pain_isolated_02
+category: urgent
+turns:
+  - "I've got steady chest discomfort that's been there a few hours"
+  - "it doesn't spread, I'm not sweaty, breathing is fine, and I don't feel sick to my stomach"
+  - "no medications, no allergies"
+expect:
+  escalation: URGENT
+  escalation_source: [gate]
+  triage_floor: gp_urgent
+gold_soap:
+  chief_complaint: "steady chest discomfort without red-flag features"
+  hpi: { onset: "a few hours ago", radiation: "none" }
+  triage_band: gp_urgent
+  must_cite: true
+provenance: "MedlinePlus Chest Pain"
+notes: "chest_pain (discomfort) without ACS features -> chest_pain_isolated"
