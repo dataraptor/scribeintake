@@ -25,6 +25,10 @@ __all__ = [
     "MetricValue",
     "LeaderboardMeta",
     "Leaderboard",
+    "Verdict",
+    "AggregateVerdict",
+    "KappaReport",
+    "RetrievalReport",
 ]
 
 
@@ -133,6 +137,10 @@ class LeaderboardMeta(BaseModel):
     mean_tokens: float | None = None
     p50_latency_ms: float | None = None
     p95_latency_ms: float | None = None
+    # Split 08: judge-calibration κ (one row per metric + ``overall``) and the RAGAS retrieval
+    # summary. Empty/None on the deterministic-only tier (these are LLM/index-dependent).
+    kappa: list[dict] = Field(default_factory=list)
+    retrieval: dict | None = None
 
 
 class Leaderboard(BaseModel):
@@ -147,3 +155,91 @@ class Leaderboard(BaseModel):
     # keys the mockup uses so Split 11/12 can bind without a transform.
     ld_det: list[dict] = Field(default_factory=list, serialization_alias="ldDet", alias="ldDet")
     ld_dist: list[dict] = Field(default_factory=list, serialization_alias="ldDist", alias="ldDist")
+
+
+# ============================================================ judge verdicts (Split 08)
+class Verdict(BaseModel):
+    """One LLM-judge verdict for one metric on one item (the structured-output target).
+
+    The judge model is forced to emit exactly this shape, so the parse is guaranteed. ``metric``
+    and ``abstained`` are stamped in code after parsing (the model fills ``passed``/``score``/
+    ``reason``/``span``): ``abstained`` records a refused/errored judge call so it is counted
+    neither as a pass nor a fail (spec section 18 / section 21 #7).
+
+    Kept structured-output-safe (plain types, no length/range constraints) like the SOAP schema.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric: str = ""
+    passed: bool = False
+    score: float = 0.0  # fraction in [0,1]; for boolean metrics, 1.0 if passed else 0.0
+    reason: str = ""
+    span: str = ""  # the offending text span ("" when nothing offends)
+    abstained: bool = False
+
+
+class AggregateVerdict(BaseModel):
+    """The N-run majority for one metric on one item (the honesty unit, section 15).
+
+    A single judge pass is non-deterministic, so the reported verdict is the **majority** of N
+    passes, with ``agreement`` = the fraction of (non-abstained) passes that match it. A judge
+    that flip-flops surfaces as low agreement instead of a falsely-confident single number.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric: str
+    passed: bool  # the majority verdict over the non-abstained runs
+    mean: float  # mean score over the non-abstained runs
+    agreement: float  # fraction of non-abstained runs agreeing with ``passed``
+    n: int  # total judge runs requested
+    n_effective: int  # non-abstained runs (the ones the verdict is computed from)
+    verdicts: list[Verdict] = Field(default_factory=list)
+
+    @property
+    def all_abstained(self) -> bool:
+        return self.n_effective == 0
+
+
+class KappaReport(BaseModel):
+    """Cohen's κ between the judge majority and the human label for one metric (section 15).
+
+    ``kappa`` is ``None`` when undefined (a single-class label set — everything agrees by
+    default, so κ is meaningless and must not be reported as 0). The confusion counts and
+    ``interpretation`` (κ ≥ 0.6 substantial / ≥ 0.8 strong) are reported alongside.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric: str
+    kappa: float | None
+    n: int
+    both_pass: int = 0
+    both_fail: int = 0
+    judge_pass_human_fail: int = 0
+    judge_fail_human_pass: int = 0
+    observed_agreement: float = 0.0
+    expected_agreement: float = 0.0
+    interpretation: str = ""
+    note: str | None = None
+
+
+class RetrievalReport(BaseModel):
+    """RAGAS-style retrieval metrics over a held-out query→relevant-chunk label set (section 11).
+
+    A **transparent local implementation** (not the LLM-judged RAGAS package — recorded in
+    ``impl``): context precision/recall are computed from the labels; faithfulness/answer
+    relevancy are content-term-overlap proxies. Every number is unit-testable on a fixture.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    context_precision: float
+    context_recall: float
+    faithfulness: float
+    answer_relevancy: float
+    n_queries: int
+    k: int
+    impl: str = "local-transparent-v1"
+    per_query: list[dict] = Field(default_factory=list)

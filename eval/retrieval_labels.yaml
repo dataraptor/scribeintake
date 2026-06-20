@@ -1,0 +1,61 @@
+# Held-out retrieval label set for the RAGAS-style eval (Split 08, spec §11).
+#
+# query -> relevant chunk_id(s) over the Split-05 curated public-domain corpus. The chunk_ids
+# are stable (`chk_<hash(doc|index)>`); the reference `answer` is a paraphrase grounded in the
+# relevant chunk's text (license-clear US-gov guideline content), used for the faithfulness +
+# answer-relevancy proxies. Labels were authored from the corpus and verified against the real
+# retriever (Split 05). Synthetic/educational — no real PHI.
+
+- query: chest pain spreading to the arm with sweating, when to call 911
+  relevant: [chk_fbc2f9e712, chk_1fec69a2aa]
+  answer: >-
+    New chest pain that spreads to the arm, jaw, or back, especially with sweating, should be
+    treated as an emergency; call 911 right away.
+
+- query: stroke face drooping arm weakness slurred speech what to do
+  relevant: [chk_040742c386]
+  answer: >-
+    Sudden face drooping, arm weakness, or speech difficulty are stroke warning signs; call 911
+    right away and note the time symptoms started.
+
+- query: thoughts of suicide or self-harm, where to get crisis help now
+  relevant: [chk_a3af3e8964]
+  answer: >-
+    Thoughts of suicide or self-harm are a medical emergency; call or text the 988 Suicide and
+    Crisis Lifeline, or call 911 if in immediate danger.
+
+- query: low blood sugar hypoglycemia reading below 54 mg/dL
+  relevant: [chk_8ed777b1d0, chk_20c38f00af]
+  answer: >-
+    A blood glucose reading below 54 mg/dL is considered seriously low and needs immediate
+    action; severe low blood glucose is an emergency.
+
+- query: short of breath cannot catch my breath low oxygen
+  relevant: [chk_ac63f0bbf3]
+  answer: >-
+    Call 911 if you cannot catch your breath; a pulse oximeter reading below about 92 percent
+    suggests low oxygen and should be taken seriously.
+
+- query: very high blood pressure 190 over 130 hypertensive crisis
+  relevant: [chk_201d3e3045, chk_5bdd3600f1]
+  answer: >-
+    A reading higher than 180 systolic or higher than 120 diastolic is a hypertensive crisis;
+    if it stays that high, seek medical care right away.
+
+- query: stiff neck fever and severe headache meningitis signs
+  relevant: [chk_821d57db17]
+  answer: >-
+    Meningitis is inflammation of the tissue around the brain and spinal cord and can cause
+    fever, severe headache, and a stiff neck.
+
+- query: severe allergic reaction throat swelling trouble breathing anaphylaxis
+  relevant: [chk_1da8dd8c2b]
+  answer: >-
+    Anaphylaxis is a serious allergic reaction whose symptoms can include throat swelling and
+    trouble breathing and can begin very quickly.
+
+- query: vomiting blood gastrointestinal bleeding
+  relevant: [chk_b7a811b5de]
+  answer: >-
+    Gastrointestinal bleeding is a symptom of a problem in the digestive tract; vomiting blood
+    needs prompt medical evaluation.

@@ -24,6 +24,10 @@
 | SOAP field acc | pending |
 | Triage band acc | pending |
 | False-alarm | pending |
-| Faithfulness | pending (Split 08) |
-| No-diagnosis | pending (Split 08) |
-| No-coaching after escalation | pending (Split 08) |
+| Faithfulness | pending |
+| No-diagnosis | pending |
+| No-coaching after escalation | pending |
+| Context precision | pending |
+| Context recall | pending |
+| RAGAS faithfulness | pending |
+| Answer relevancy | pending |

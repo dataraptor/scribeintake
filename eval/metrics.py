@@ -26,7 +26,14 @@ from scribeintake.models import SOAP, EscalationLevel, EscalationSource, TriageB
 from scribeintake.tools.suggest_triage import clamp_band
 
 from .gate_check import LEVEL_RANK, crosscheck, gate_trace
-from .models import Leaderboard, LeaderboardMeta, MetricValue, ScenarioRun
+from .models import (
+    KappaReport,
+    Leaderboard,
+    LeaderboardMeta,
+    MetricValue,
+    RetrievalReport,
+    ScenarioRun,
+)
 from .scenario import Scenario, ScenarioCategory
 
 _BAND_ORDER: list[TriageBand] = list(TriageBand)
@@ -200,8 +207,18 @@ def _parses_as_soap(d: dict | None) -> bool:
 
 
 # ========================================================= distributional (tracked)
-def compute_distributional(scenarios: list[Scenario], runs: list[ScenarioRun]) -> list[MetricValue]:
-    """The mean±stdev-over-N metrics + the pending judge stubs (Split 08 plugs in here)."""
+def compute_distributional(
+    scenarios: list[Scenario],
+    runs: list[ScenarioRun],
+    *,
+    judge_metrics: list[MetricValue] | None = None,
+) -> list[MetricValue]:
+    """The mean±stdev-over-N metrics + the judge-backed cells (Split 08 plugs into the seam).
+
+    ``judge_metrics`` are the three LLM-judge cells computed in :mod:`eval.judge` (faithfulness,
+    no-diagnosis, no-coaching). When absent (the keyless / deterministic path) the explicit
+    **pending sentinels** stand in — never a fabricated number (spec section 15).
+    """
     rounds = _rounds(runs)
     by_id = {s.id: s for s in scenarios}
 
@@ -226,7 +243,8 @@ def compute_distributional(scenarios: list[Scenario], runs: list[ScenarioRun]) -
         [_round_false_alarm(rnd, scenarios, by_id) for rnd in rounds],
         show_spread=False,
     )
-    return [recall, soap_field, band, false_alarm, *_judge_stubs()]
+    judged = judge_metrics if judge_metrics is not None else _judge_stubs()
+    return [recall, soap_field, band, false_alarm, *judged]
 
 
 def _judge_stubs() -> list[MetricValue]:
@@ -243,12 +261,44 @@ def _judge_stubs() -> list[MetricValue]:
             group=DISTRIBUTIONAL,
             reproducible=False,
             value=None,
-            display="pending (Split 08)",
+            display="pending",
             pending=True,
-            note="LLM-judge metric — implemented in Split 08",
+            note="LLM-judge metric — run the full tier with a key (eval.judge)",
         )
         for key, label in specs
     ]
+
+
+# ----------------------------------------------------------------- retrieval (RAGAS) cells
+_RETRIEVAL_SPECS = [
+    ("ctx_precision", "Context precision", "context_precision"),
+    ("ctx_recall", "Context recall", "context_recall"),
+    ("ragas_faithfulness", "RAGAS faithfulness", "faithfulness"),
+    ("answer_relevancy", "Answer relevancy", "answer_relevancy"),
+]
+
+
+def retrieval_metrics(report: RetrievalReport | None) -> list[MetricValue]:
+    """The four RAGAS-style cells (Split 08). ``None`` → pending sentinels (keyless / no index)."""
+    out: list[MetricValue] = []
+    for key, label, attr in _RETRIEVAL_SPECS:
+        if report is None:
+            out.append(
+                MetricValue(
+                    key=key, label=label, group=DISTRIBUTIONAL, reproducible=False, value=None,
+                    display="pending", pending=True,
+                    note="RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)",
+                )
+            )
+        else:
+            value = getattr(report, attr)
+            out.append(
+                MetricValue(
+                    key=key, label=label, group=DISTRIBUTIONAL, reproducible=False, value=value,
+                    display=f"{value:.2f}", n=report.n_queries,
+                )
+            )
+    return out
 
 
 def _rounds(runs: list[ScenarioRun]) -> list[list[ScenarioRun]]:
@@ -434,17 +484,32 @@ def assemble_leaderboard(
     deterministic_only: bool,
     generated_at: str,
     models: dict[str, str],
+    judge_metrics: list[MetricValue] | None = None,
+    retrieval: RetrievalReport | None = None,
+    kappa: list[KappaReport] | None = None,
 ) -> Leaderboard:
-    """Build the two-group :class:`Leaderboard` from scenarios + run records."""
+    """Build the two-group :class:`Leaderboard` from scenarios + run records.
+
+    ``judge_metrics`` / ``retrieval`` / ``kappa`` (Split 08) fill the **distributional** group's
+    judge + RAGAS cells and the κ calibration line. They are always tracked, never gated — the
+    deterministic-only path ignores them and emits honest pending sentinels.
+    """
     det = compute_deterministic(scenarios, runs)
     if deterministic_only or not runs:
         dist = _pending_distributional()
         cost: dict[str, float] = {}
         rounds = 0
+        kappa_rows: list[dict] = []
+        retrieval_summary = None
     else:
-        dist = compute_distributional(scenarios, runs)
+        dist = [
+            *compute_distributional(scenarios, runs, judge_metrics=judge_metrics),
+            *retrieval_metrics(retrieval),
+        ]
         cost = compute_cost_latency(runs)
         rounds = len(_rounds(runs))
+        kappa_rows = [k.model_dump() for k in (kappa or [])]
+        retrieval_summary = retrieval.model_dump(exclude={"per_query"}) if retrieval else None
 
     meta = LeaderboardMeta(
         generated_at=generated_at,
@@ -453,6 +518,8 @@ def assemble_leaderboard(
         scenario_count=len(scenarios),
         deterministic_only=deterministic_only,
         models=models,
+        kappa=kappa_rows,
+        retrieval=retrieval_summary,
         **cost,
     )
     return Leaderboard(
@@ -466,8 +533,8 @@ def assemble_leaderboard(
 
 def _pending_distributional() -> list[MetricValue]:
     """All distributional metrics as pending (the deterministic-only / no-runs leaderboard)."""
-    base = compute_distributional([], [])  # rounds empty → every computed metric is pending
-    return base
+    # rounds empty → every computed metric is pending; retrieval cells pending too.
+    return [*compute_distributional([], []), *retrieval_metrics(None)]
 
 
 def _framing(det: list[MetricValue], dist: list[MetricValue], rounds: int) -> str:

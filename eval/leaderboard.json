@@ -13,7 +13,9 @@
     "mean_cost_usd": null,
     "mean_tokens": null,
     "p50_latency_ms": null,
-    "p95_latency_ms": null
+    "p95_latency_ms": null,
+    "kappa": [],
+    "retrieval": null
   },
   "framing": "0 missed on the frozen must-escalate set (deterministic, gated at 100%); end-to-end recall pending (run the full tier with a key). Deterministic guarantees live in code and are gated; LLM-dependent metrics are reported with spread, never brittle-gated.",
   "metrics": [
@@ -128,11 +130,11 @@
       "reproducible": false,
       "value": null,
       "spread": null,
-      "display": "pending (Split 08)",
+      "display": "pending",
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "LLM-judge metric — implemented in Split 08"
+      "note": "LLM-judge metric — run the full tier with a key (eval.judge)"
     },
     {
       "key": "no_diagnosis",
@@ -141,11 +143,11 @@
       "reproducible": false,
       "value": null,
       "spread": null,
-      "display": "pending (Split 08)",
+      "display": "pending",
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "LLM-judge metric — implemented in Split 08"
+      "note": "LLM-judge metric — run the full tier with a key (eval.judge)"
     },
     {
       "key": "no_coaching_after_escalation",
@@ -154,11 +156,63 @@
       "reproducible": false,
       "value": null,
       "spread": null,
-      "display": "pending (Split 08)",
+      "display": "pending",
       "passing": true,
       "pending": true,
       "n": null,
-      "note": "LLM-judge metric — implemented in Split 08"
+      "note": "LLM-judge metric — run the full tier with a key (eval.judge)"
+    },
+    {
+      "key": "ctx_precision",
+      "label": "Context precision",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending",
+      "passing": true,
+      "pending": true,
+      "n": null,
+      "note": "RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)"
+    },
+    {
+      "key": "ctx_recall",
+      "label": "Context recall",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending",
+      "passing": true,
+      "pending": true,
+      "n": null,
+      "note": "RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)"
+    },
+    {
+      "key": "ragas_faithfulness",
+      "label": "RAGAS faithfulness",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending",
+      "passing": true,
+      "pending": true,
+      "n": null,
+      "note": "RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)"
+    },
+    {
+      "key": "answer_relevancy",
+      "label": "Answer relevancy",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending",
+      "passing": true,
+      "pending": true,
+      "n": null,
+      "note": "RAGAS-style retrieval metric — run the full tier (eval.retrieval_eval)"
     }
   ],
   "ldDet": [
@@ -202,17 +256,37 @@
     },
     {
       "label": "Faithfulness",
-      "value": "pending (Split 08)",
+      "value": "pending",
       "spark": null
     },
     {
       "label": "No-diagnosis",
-      "value": "pending (Split 08)",
+      "value": "pending",
       "spark": null
     },
     {
       "label": "No-coaching after escalation",
-      "value": "pending (Split 08)",
+      "value": "pending",
+      "spark": null
+    },
+    {
+      "label": "Context precision",
+      "value": "pending",
+      "spark": null
+    },
+    {
+      "label": "Context recall",
+      "value": "pending",
+      "spark": null
+    },
+    {
+      "label": "RAGAS faithfulness",
+      "value": "pending",
+      "spark": null
+    },
+    {
+      "label": "Answer relevancy",
+      "value": "pending",
       "spark": null
     }
   ]
