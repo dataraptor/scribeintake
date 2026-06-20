@@ -143,8 +143,7 @@ def load_scenarios(directory: str | Path) -> list[Scenario]:
 
         if data.get("id") != path.stem:
             raise ValueError(
-                f"{path}: scenario id {data.get('id')!r} must equal its filename stem "
-                f"{path.stem!r}"
+                f"{path}: scenario id {data.get('id')!r} must equal its filename stem {path.stem!r}"
             )
 
         try:

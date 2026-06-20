@@ -11,4 +11,4 @@ was scaffolded with ``eval/`` (Split 01: ``eval/tests/`` + root ``testpaths``); 
 keeps it for consistency across splits 06–14 (Split 06 session log).
 """
 
-__all__ = ["scenario"]
+__all__ = ["scenario", "gate_check", "models", "harness", "metrics", "run"]

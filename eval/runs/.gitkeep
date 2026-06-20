@@ -1,0 +1,2 @@
+# Raw per-run eval records land here as <ts>/<scenario_id>.jsonl (gitignored).
+# This file keeps the directory present so the runner never has to special-case its absence.

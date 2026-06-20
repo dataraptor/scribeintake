@@ -13,11 +13,10 @@ from pathlib import Path
 
 import pytest
 
+from eval.gate_check import gate_trace
 from eval.scenario import Scenario, ScenarioCategory, load_scenarios
 from scribeintake.models import EscalationLevel, EscalationSource
 from scribeintake.safety.rules import RULES
-
-from .test_must_escalate_gate import gate_trace
 
 SCENARIOS_DIR = Path(__file__).resolve().parents[1] / "scenarios"
 

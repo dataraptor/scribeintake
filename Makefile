@@ -1,7 +1,7 @@
 # POSIX task runner. Windows/PowerShell equivalents live in tasks.ps1.
 # Canonical commands use `python -m ...` so they work without `make`.
 
-.PHONY: install install-rag lint fmt test test-live ingest
+.PHONY: install install-rag lint fmt test test-live ingest eval eval-ci
 
 install:
 	pip install -e "./core[dev]"
@@ -25,3 +25,11 @@ test-live:
 # Build the local guideline index (downloads the embedder on first run).
 ingest:
 	python -m scribeintake.rag.ingest
+
+# Full distributional eval (×3) — needs LLM credentials; writes eval/leaderboard.{json,md}.
+eval:
+	python -m eval.run --n 3
+
+# Deterministic eval gate (the CI tier) — no API key; fails on any gated-metric regression.
+eval-ci:
+	python -m eval.run --deterministic-only

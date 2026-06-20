@@ -1,0 +1,219 @@
+{
+  "meta": {
+    "generated_at": "2026-06-20",
+    "n_runs": 0,
+    "rounds": 0,
+    "scenario_count": 58,
+    "deterministic_only": true,
+    "models": {
+      "intake": "gpt-5.5",
+      "summary": "gpt-5.5",
+      "spec_summary": "claude-opus-4-8"
+    },
+    "mean_cost_usd": null,
+    "mean_tokens": null,
+    "p50_latency_ms": null,
+    "p95_latency_ms": null
+  },
+  "framing": "0 missed on the frozen must-escalate set (deterministic, gated at 100%); end-to-end recall pending (run the full tier with a key). Deterministic guarantees live in code and are gated; LLM-dependent metrics are reported with spread, never brittle-gated.",
+  "metrics": [
+    {
+      "key": "rule_correctness",
+      "label": "Rule correctness",
+      "group": "deterministic",
+      "reproducible": true,
+      "value": 1.0,
+      "spread": null,
+      "display": "100%",
+      "passing": true,
+      "pending": false,
+      "n": 53,
+      "note": null
+    },
+    {
+      "key": "frozen_must_escalate",
+      "label": "Frozen must-escalate",
+      "group": "deterministic",
+      "reproducible": true,
+      "value": 0.0,
+      "spread": null,
+      "display": "0 miss",
+      "passing": true,
+      "pending": false,
+      "n": 18,
+      "note": null
+    },
+    {
+      "key": "triage_floor_never_violated",
+      "label": "Triage floor never violated",
+      "group": "deterministic",
+      "reproducible": true,
+      "value": 1.0,
+      "spread": null,
+      "display": "100%",
+      "passing": true,
+      "pending": false,
+      "n": 16,
+      "note": null
+    },
+    {
+      "key": "schema_validity",
+      "label": "Schema validity",
+      "group": "deterministic",
+      "reproducible": true,
+      "value": 1.0,
+      "spread": null,
+      "display": "100%",
+      "passing": true,
+      "pending": false,
+      "n": 0,
+      "note": null
+    },
+    {
+      "key": "e2e_recall",
+      "label": "E2E recall",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending",
+      "passing": true,
+      "pending": true,
+      "n": 0,
+      "note": "no runs (run the full tier with a key)"
+    },
+    {
+      "key": "soap_field_accuracy",
+      "label": "SOAP field acc",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending",
+      "passing": true,
+      "pending": true,
+      "n": 0,
+      "note": "no runs (run the full tier with a key)"
+    },
+    {
+      "key": "triage_band_accuracy",
+      "label": "Triage band acc",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending",
+      "passing": true,
+      "pending": true,
+      "n": 0,
+      "note": "no runs (run the full tier with a key)"
+    },
+    {
+      "key": "false_alarm_rate",
+      "label": "False-alarm",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending",
+      "passing": true,
+      "pending": true,
+      "n": 0,
+      "note": "no runs (run the full tier with a key)"
+    },
+    {
+      "key": "faithfulness",
+      "label": "Faithfulness",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending (Split 08)",
+      "passing": true,
+      "pending": true,
+      "n": null,
+      "note": "LLM-judge metric — implemented in Split 08"
+    },
+    {
+      "key": "no_diagnosis",
+      "label": "No-diagnosis",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending (Split 08)",
+      "passing": true,
+      "pending": true,
+      "n": null,
+      "note": "LLM-judge metric — implemented in Split 08"
+    },
+    {
+      "key": "no_coaching_after_escalation",
+      "label": "No-coaching after escalation",
+      "group": "distributional",
+      "reproducible": false,
+      "value": null,
+      "spread": null,
+      "display": "pending (Split 08)",
+      "passing": true,
+      "pending": true,
+      "n": null,
+      "note": "LLM-judge metric — implemented in Split 08"
+    }
+  ],
+  "ldDet": [
+    {
+      "label": "Rule correctness",
+      "value": "100%"
+    },
+    {
+      "label": "Frozen must-escalate",
+      "value": "0 miss"
+    },
+    {
+      "label": "Triage floor never violated",
+      "value": "100%"
+    },
+    {
+      "label": "Schema validity",
+      "value": "100%"
+    }
+  ],
+  "ldDist": [
+    {
+      "label": "E2E recall",
+      "value": "pending",
+      "spark": null
+    },
+    {
+      "label": "SOAP field acc",
+      "value": "pending",
+      "spark": null
+    },
+    {
+      "label": "Triage band acc",
+      "value": "pending",
+      "spark": null
+    },
+    {
+      "label": "False-alarm",
+      "value": "pending",
+      "spark": null
+    },
+    {
+      "label": "Faithfulness",
+      "value": "pending (Split 08)",
+      "spark": null
+    },
+    {
+      "label": "No-diagnosis",
+      "value": "pending (Split 08)",
+      "spark": null
+    },
+    {
+      "label": "No-coaching after escalation",
+      "value": "pending (Split 08)",
+      "spark": null
+    }
+  ]
+}

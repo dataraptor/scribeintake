@@ -25,17 +25,11 @@ from pathlib import Path
 
 import pytest
 
+from eval.gate_check import gate_trace
 from eval.scenario import ScenarioCategory, load_scenarios
 from scribeintake.models import EscalationLevel, EscalationSource, TriageBand
-from scribeintake.safety import run_gate
 
 SCENARIOS_DIR = Path(__file__).resolve().parents[1] / "scenarios"
-
-_LEVEL_RANK: dict[EscalationLevel, int] = {
-    EscalationLevel.CLEAR: 0,
-    EscalationLevel.URGENT: 1,
-    EscalationLevel.EMERGENCY: 2,
-}
 
 ALL_SCENARIOS = load_scenarios(SCENARIOS_DIR)
 
@@ -46,30 +40,6 @@ def _by_category(category: ScenarioCategory):
 
 def _ids(scenarios):
     return [s.id for s in scenarios]
-
-
-def gate_trace(turns: list[str]) -> tuple[EscalationLevel, TriageBand, set[str]]:
-    """Run ``turns`` in order through the deterministic gate, accumulating state.
-
-    Mirrors the orchestrator's per-turn flow without any LLM: each turn extracts signals
-    merged with the prior turn's, evaluates the rules, and raises the monotonic floor.
-
-    Returns:
-        ``(max_level, final_floor, matched_rule_ids)`` — the peak escalation level seen, the
-        final (monotonic) triage floor, and the union of every matched rule id across turns.
-    """
-    prior = None
-    floor = TriageBand.self_care
-    max_level = EscalationLevel.CLEAR
-    matched: set[str] = set()
-    for turn in turns:
-        result = run_gate(turn, prior_signals=prior, current_floor=floor)
-        prior = result.signals
-        floor = result.floor
-        if _LEVEL_RANK[result.verdict.level] > _LEVEL_RANK[max_level]:
-            max_level = result.verdict.level
-        matched.update(result.verdict.matched_rules)
-    return max_level, floor, matched
 
 
 # --------------------------------------------------------------------- must_escalate (frozen)
@@ -134,9 +104,7 @@ _GATE_ONLY_ADVERSARIAL = [
 ]
 
 
-@pytest.mark.parametrize(
-    "scenario", _GATE_ONLY_ADVERSARIAL, ids=_ids(_GATE_ONLY_ADVERSARIAL)
-)
+@pytest.mark.parametrize("scenario", _GATE_ONLY_ADVERSARIAL, ids=_ids(_GATE_ONLY_ADVERSARIAL))
 def test_gate_deterministic_adversarial(scenario):
     """Injection/correction cases whose source is gate-only must reach their declared level.
 
