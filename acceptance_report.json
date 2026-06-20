@@ -1,0 +1,192 @@
+{
+  "generated_at": "local-run",
+  "overall": "PASS",
+  "checks": [
+    {
+      "name": "deterministic_suite",
+      "status": "PASS",
+      "detail": "632 passed, 23 deselected in 12.35s",
+      "gated": true,
+      "proves": [
+        "all unit/integration tests"
+      ]
+    },
+    {
+      "name": "deterministic_eval",
+      "status": "PASS",
+      "detail": "rule_correctness=100% \u00b7 frozen_must_escalate=0 miss \u00b7 triage_floor_never_violated=100% \u00b7 schema_validity=100%",
+      "gated": true,
+      "proves": [
+        "rule_correctness",
+        "frozen_must_escalate",
+        "triage_floor_never_violated",
+        "schema_validity"
+      ]
+    },
+    {
+      "name": "six_invariant_guard",
+      "status": "PASS",
+      "detail": "26 passed in 0.97s",
+      "gated": true,
+      "proves": [
+        "inv1_extractor_no_llm",
+        "inv2_gate_upstream",
+        "inv3_emergency_short_circuit",
+        "inv4_floor_monotonic",
+        "inv5_fail_safe",
+        "inv6_band_clamp"
+      ]
+    },
+    {
+      "name": "audit:secrets",
+      "status": "PASS",
+      "detail": "no key-shaped strings in the tracked tree; .env never committed; history clean",
+      "gated": true,
+      "proves": [
+        "no committed secrets"
+      ]
+    },
+    {
+      "name": "audit:gitignored",
+      "status": "PASS",
+      "detail": "secrets/runtime-data/indexes gitignored (.env, data/, *.bin, .chroma) and untracked",
+      "gated": true,
+      "proves": []
+    },
+    {
+      "name": "audit:deps_pinned",
+      "status": "PASS",
+      "detail": "all 13 declared deps carry a version bound",
+      "gated": true,
+      "proves": [
+        "deps pinned"
+      ]
+    },
+    {
+      "name": "audit:local_only",
+      "status": "PASS",
+      "detail": "safety + RAG paths are local-only (extractor/rules/retrieve/ingest); LLM is the only egress",
+      "gated": true,
+      "proves": [
+        "local-only PHI handling"
+      ]
+    },
+    {
+      "name": "audit:pip_audit",
+      "status": "INFO",
+      "detail": "pip-audit not installed - scan skipped",
+      "gated": false,
+      "proves": []
+    },
+    {
+      "name": "safety_e2e",
+      "status": "PASS",
+      "detail": "emergency \u2192 halt + agent never ran; injection \u2192 gate still fires EMERGENCY",
+      "gated": true,
+      "proves": [
+        "inv3_emergency_short_circuit",
+        "injection-defense"
+      ]
+    },
+    {
+      "name": "live_model_e2e",
+      "status": "SKIP",
+      "detail": "no API key (or --deterministic-only) \u2014 live model row skipped",
+      "gated": false,
+      "proves": [
+        "live model in the loop"
+      ]
+    },
+    {
+      "name": "perf",
+      "status": "INFO",
+      "detail": "no fresh traces \u2014 recorded Split-09 live: intake p50=2290ms / p95=4715ms (both inside \u00a718 3000/6000ms); re-measure with a keyed run",
+      "gated": false,
+      "proves": [
+        "\u00a718 p50<3s",
+        "\u00a718 p95<6s"
+      ]
+    },
+    {
+      "name": "docs_claims",
+      "status": "PASS",
+      "detail": "README headline numbers trace to leaderboard.json; all relative links resolve",
+      "gated": false,
+      "proves": [
+        "claims trace to artifacts"
+      ]
+    }
+  ],
+  "signoff_matrix": [
+    {
+      "item": "INV-1  extractor has no LLM/network",
+      "status": "PASS",
+      "proven_by": "six_invariant_guard"
+    },
+    {
+      "item": "INV-2  gate runs upstream of the agent",
+      "status": "PASS",
+      "proven_by": "six_invariant_guard"
+    },
+    {
+      "item": "INV-3  EMERGENCY \u2192 agent never runs",
+      "status": "PASS",
+      "proven_by": "safety_e2e"
+    },
+    {
+      "item": "INV-4  triage floor is monotonic",
+      "status": "PASS",
+      "proven_by": "six_invariant_guard"
+    },
+    {
+      "item": "INV-5  safety-path exception fails safe",
+      "status": "PASS",
+      "proven_by": "six_invariant_guard"
+    },
+    {
+      "item": "INV-6  predicted band >= floor (clamp)",
+      "status": "PASS",
+      "proven_by": "six_invariant_guard"
+    },
+    {
+      "item": "GATE   rule correctness 100%",
+      "status": "PASS",
+      "proven_by": "deterministic_eval"
+    },
+    {
+      "item": "GATE   frozen must-escalate 0-miss",
+      "status": "PASS",
+      "proven_by": "deterministic_eval"
+    },
+    {
+      "item": "GATE   triage floor never violated 100%",
+      "status": "PASS",
+      "proven_by": "deterministic_eval"
+    },
+    {
+      "item": "GATE   schema validity 100%",
+      "status": "PASS",
+      "proven_by": "deterministic_eval"
+    },
+    {
+      "item": "\u00a718    intake latency p50<3s / p95<6s",
+      "status": "INFO",
+      "proven_by": "perf"
+    },
+    {
+      "item": "\u00a717    no committed secrets / local-only",
+      "status": "PASS",
+      "proven_by": "audit:secrets"
+    },
+    {
+      "item": "\u00a717    PHI paths local-only",
+      "status": "PASS",
+      "proven_by": "audit:local_only"
+    },
+    {
+      "item": "CLAIM  README numbers trace to artifacts",
+      "status": "PASS",
+      "proven_by": "docs_claims"
+    }
+  ]
+}

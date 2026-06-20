@@ -40,6 +40,13 @@ jobs:
         # failing the build. Runs no models — free and key-free.
         run: python -m eval.run --deterministic-only
 
+      - name: Security/dependency audit (Split 14)
+        # Fast, key-free release-hygiene gate on every push: no key-shaped string in the tree or
+        # git history, secrets/data/indexes gitignored, deps pinned, safety+RAG paths local-only.
+        # (The full acceptance sign-off — `make acceptance-ci` — reruns the suite; this is the
+        # cheap subset worth gating per-commit.)
+        run: python scripts/audit.py
+
   eval-full:
     # Nightly distributional / LLM-dependent tier. Runs the full ×N eval against the live
     # model with credentials, uploads the leaderboard + raw runs as artifacts, and surfaces

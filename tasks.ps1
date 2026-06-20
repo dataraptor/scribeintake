@@ -2,7 +2,7 @@
 # Usage: .\tasks.ps1 <task>   e.g.  .\tasks.ps1 test
 param(
     [Parameter(Position = 0)]
-    [ValidateSet("install", "install-api", "install-rag", "lint", "fmt", "test", "test-live", "ingest", "eval", "eval-ci", "redteam", "cost-report", "cache-check", "run-api", "demo")]
+    [ValidateSet("install", "install-api", "install-rag", "lint", "fmt", "test", "test-live", "ingest", "eval", "eval-ci", "redteam", "cost-report", "cache-check", "run-api", "demo", "audit", "acceptance", "acceptance-ci")]
     [string]$Task = "test"
 )
 
@@ -33,4 +33,10 @@ switch ($Task) {
     # Boot API + UI for the demo/Loom recording (Split 12) - clean process, no --reload.
     # Open http://localhost:8000 - see docs/demo-script.md.
     "demo"        { python -m uvicorn api.main:app --port 8000 }
+    # Security/dependency audit (Split 14) - secrets/gitignored/deps-pinned/local-only. No key.
+    "audit"          { python scripts/audit.py }
+    # Full release-acceptance run (Split 14) - sign-off matrix + acceptance_report.{json,md}.
+    "acceptance"     { python scripts/acceptance.py }
+    # Deterministic-only acceptance (no API key) - the live model row is skipped.
+    "acceptance-ci"  { python scripts/acceptance.py --deterministic-only }
 }

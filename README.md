@@ -164,6 +164,17 @@ the system a **drop-in for a HIPAA boundary** by pointing the model client at a 
 endpoint** (Bedrock / Vertex / platform deployment). Audit logging (`tool_calls`, `safety_events`),
 refusal handling, and not-a-diagnosis disclaimers in every summary payload.
 
+## Release & acceptance
+
+`make acceptance-ci` (no key) runs one repeatable release gate — the deterministic suite, the
+deterministic eval tier, the **six-invariant guard** ([`core/tests/test_invariants_integration.py`](core/tests/test_invariants_integration.py)),
+the security/deps audit ([`scripts/audit.py`](scripts/audit.py)), a key-free safety e2e, perf vs §18,
+and a docs-claims check — and prints a **sign-off matrix** to
+[`acceptance_report.md`](acceptance_report.md). `make acceptance` (key in `.env`) adds the live model
+row + measured latency. Deploy + the HIPAA BAA-boundary posture are in [`DEPLOY.md`](DEPLOY.md); the
+human checklist in [`docs/release-checklist.md`](docs/release-checklist.md); the version history in
+[`CHANGELOG.md`](CHANGELOG.md).
+
 ## Demo
 
 `make demo` (or `.\tasks.ps1 demo`) → open `http://localhost:8000`. The 2-minute, 5-beat storyboard
@@ -189,8 +200,9 @@ api/            thin FastAPI adapter (HTTP/SSE) — reshape only, no engine logi
 eval/           eval harness (in-process, ×N), gold scenarios, metrics, judge, RAGAS, leaderboard
 observability/  read-only cost/latency/cache analysis + dashboard
 app/            the browser UI (ScribeIntake.dc.html) — renders only; safety comes from the API
-docs/           architecture · leaderboard · demo script · compliance
-.github/        two-tier CI (per-commit deterministic gate + nightly distributional)
+scripts/        release tooling — acceptance run (sign-off matrix) + security/deps audit
+docs/           architecture · leaderboard · demo script · compliance · release checklist
+.github/        two-tier CI (per-commit deterministic gate + audit + nightly distributional)
 tmp/split/      the build roadmap + per-session PROGRESS log
 ```
 

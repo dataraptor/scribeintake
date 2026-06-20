@@ -1,7 +1,7 @@
 # POSIX task runner. Windows/PowerShell equivalents live in tasks.ps1.
 # Canonical commands use `python -m ...` so they work without `make`.
 
-.PHONY: install install-api install-rag lint fmt test test-live ingest eval eval-ci redteam cost-report cache-check run-api demo
+.PHONY: install install-api install-rag lint fmt test test-live ingest eval eval-ci redteam cost-report cache-check run-api demo audit acceptance acceptance-ci
 
 install:
 	pip install -e "./core[dev]"
@@ -63,3 +63,18 @@ run-api:
 # clean process for screen capture). Open http://localhost:8000 — see docs/demo-script.md.
 demo:
 	python -m uvicorn api.main:app --port 8000
+
+# Security/dependency audit (Split 14): secrets (tree + history), gitignored, deps pinned,
+# safety+RAG paths local-only, best-effort pip-audit. No API key needed.
+audit:
+	python scripts/audit.py
+
+# Full release-acceptance run (Split 14): deterministic suite + eval tier + six-invariant guard
+# + audit + safety/live e2e + perf + docs-claims → a sign-off matrix + acceptance_report.{json,md}.
+# Uses a key from .env for the live model row if present.
+acceptance:
+	python scripts/acceptance.py
+
+# Deterministic-only acceptance (no API key): the live model row is skipped; all gated rows run.
+acceptance-ci:
+	python scripts/acceptance.py --deterministic-only
