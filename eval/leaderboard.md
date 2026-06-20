@@ -2,7 +2,7 @@
 
 > 0 missed on the frozen must-escalate set (deterministic, gated at 100%); end-to-end recall pending (run the full tier with a key). Deterministic guarantees live in code and are gated; LLM-dependent metrics are reported with spread, never brittle-gated.
 
-- **Generated:** 2026-06-20
+- **Generated:** 20260620T091102Z
 - **Scenarios:** 58 · **N per scenario:** 0 · **rounds aggregated:** 0
 - **Models:** intake `gpt-5.5` · summary `gpt-5.5`
 - **Tier:** deterministic-only (no API key)
